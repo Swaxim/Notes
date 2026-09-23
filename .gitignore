@@ -1,11 +1,11 @@
 # Obsidian vault configuration and state files
-.obsidian/workspace
-.obsidian/workspace.json
-.obsidian/workspace-mobile
-.obsidian/workspace-mobile.json
-.obsidian/graph.json
-.obsidian/plugins/obsidian-git/obsidian_askpass.sh
-.trash/
+**/.obsidian/workspace
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile
+**/.obsidian/workspace-mobile.json
+**/.obsidian/graph.json
+**/.obsidian/plugins/obsidian-git/obsidian_askpass.sh
+**/.trash/
 
 # Operating System files
 .DS_Store
