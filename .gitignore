@@ -1,0 +1,53 @@
+# Obsidian vault configuration and state files
+.obsidian/workspace
+.obsidian/workspace.json
+.obsidian/workspace-mobile
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+.obsidian/plugins/obsidian-git/obsidian_askpass.sh
+.trash/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Package managers and node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs and text editors
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+
+# Temporary/Cache files
+temp_*.txt
+temp_*.pdf
+
+# Large and binary files
+*.pdf
+*.ipynb
+*.pptx
+*.docx
+*.xlsx
+*.zip
+*.tar.gz
+
+# Environment and secret files
+.env
+.env.*
+*.log
+
+# Antigravity / Agent CLI local-only files
+.antigravitycli/
+Antigravity CLI.bat
+
+# Quartz subdirectory
+/quartz/
