@@ -508,3 +508,1483 @@ Data reduction compresses the representation of the data while preserving its es
 >   - $j = 2 \implies 0.14 < 1 \implies j = 2$
 > - Divide each value by $10^2 = 100$:
 >   - **Scaled Values**: $[0.02, 0.05, 0.08, 0.11, 0.14]$
+
+
+---
+
+# Topic 2: The Regression Pipeline Part II
+
+## 2.1 Stage 5: Select & Train Regression Models
+
+Following data preparation, the next stage of the machine learning pipeline is selecting candidate learning algorithms and training them on the preprocessed training dataset.
+
+```mermaid
+flowchart LR
+    A["Input Features (X)"] --> B["Algorithm h(x)<br>Learns Mapping"]
+    B --> C["Prediction ŷ<br>Continuous Value"]
+    C --> D["Compare with Ground Truth (y)<br>Evaluate Loss/Error"]
+```
+
+> [!info] Core Objective
+> The goal of supervised regression training is to find a mathematical hypothesis function $h(x)$ that maps the input features $\mathbf{X}$ to continuous predictions $\hat{y}$ while minimizing the empirical discrepancy (loss/error) between predictions $\hat{y}$ and actual labels $y$.
+
+### Candidate Regression Algorithms
+Most supervised machine learning algorithms can be adapted for both regression (continuous output) and classification (discrete categories):
+- **Linear Regression (LR)**: Parametric linear baseline finding optimal hyperplane weights.
+- **Decision Trees (DT)**: Non-parametric partitioning of feature space into piecewise constant regions.
+- **Random Forests (RF)**: Ensemble of decorrelated decision trees reducing prediction variance.
+- **$k$-Nearest Neighbours ($k$-NN)**: Non-parametric, distance-weighted local interpolation.
+- **Support Vector Regression (SVR)**: Boundary margin optimization with $\epsilon$-insensitive loss.
+- **Artificial Neural Networks (ANN)**: Multi-layer perceptrons modeling complex non-linear manifolds.
+
+---
+
+## 2.2 Linear Regression (LR)
+
+Linear Regression models the relationship between continuous input features $\mathbf{X}$ and a continuous target $y$ by fitting the optimal linear equation.
+
+```mermaid
+flowchart LR
+    S1["1. Represent Relationship<br>Assume linear form"] --> S2["2. Compute Means<br>x̄ and ȳ"]
+    S2 --> S3["3. Compute Slope (β₁)<br>Covariance / Variance"]
+    S3 --> S4["4. Compute Intercept (β₀)<br>β₀ = ȳ - β₁x̄"]
+    S4 --> S5["5. Predict New Value<br>ŷ = β₀ + β₁X"]
+```
+
+### 2.2.1 Mathematical Formulation (Simple Linear Regression)
+$$\hat{y} = \beta_0 + \beta_1 X$$
+where:
+- $\hat{y}$ = Predicted continuous dependent target
+- $X$ = Independent input predictor
+- $\beta_0$ = $y$-intercept (predicted value of $y$ when $X = 0$)
+- $\beta_1$ = Regression slope (expected rate of change in $y$ for a one-unit increase in $X$)
+
+The optimal parameter vector $\boldsymbol{\beta}$ is derived by minimizing the **Sum of Squared Errors (SSE)** (Ordinary Least Squares - OLS):
+$$\text{SSE} = \sum_{i=1}^n (y_i - \hat{y}_i)^2 = \sum_{i=1}^n \left(y_i - (\beta_0 + \beta_1 x_i)\right)^2$$
+
+$$\beta_1 = \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^n (x_i - \bar{x})^2}, \quad \beta_0 = \bar{y} - \beta_1 \bar{x}$$
+
+### 2.2.2 Step-by-Step Numerical Walkthrough
+Given the Food Delivery trip records ($n = 5$):
+
+| Observation | Distance $X$ (km) | Delivery Time $y$ (min) |
+| :--- | :--- | :--- |
+| A | 7.93 | 43 |
+| B | 16.42 | 84 |
+| C | 9.52 | 59 |
+| D | 7.44 | 37 |
+| E | 19.03 | 68 |
+
+1. **Calculate Sample Means**:
+   $$\bar{x} = \frac{7.93 + 16.42 + 9.52 + 7.44 + 19.03}{5} = \frac{60.34}{5} = 12.068\text{ km}$$
+   $$\bar{y} = \frac{43 + 84 + 59 + 37 + 68}{5} = \frac{291}{5} = 58.20\text{ min}$$
+
+2. **Compute Covariance and Variance Components**:
+
+| $x_i$ | $y_i$ | $(x_i - \bar{x})$ | $(y_i - \bar{y})$ | $(x_i - \bar{x})(y_i - \bar{y})$ | $(x_i - \bar{x})^2$ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 7.93 | 43 | $-4.138$ | $-15.20$ | $62.898$ | $17.123$ |
+| 16.42 | 84 | $+4.352$ | $+25.80$ | $112.282$ | $18.940$ |
+| 9.52 | 59 | $-2.548$ | $+0.80$ | $-2.038$ | $6.492$ |
+| 7.44 | 37 | $-4.628$ | $-21.20$ | $98.114$ | $21.418$ |
+| 19.03 | 68 | $+6.962$ | $+9.80$ | $68.228$ | $48.470$ |
+| **Sum ($\sum$)** | | | | **$339.482$** | **$112.443$** |
+
+3. **Derive Slope ($\beta_1$) and Intercept ($\beta_0$)**:
+   $$\beta_1 = \frac{339.482}{112.443} \approx 3.0191$$
+   $$\beta_0 = 58.20 - (3.0191 \times 12.068) = 58.20 - 36.4345 = 21.7655 \approx 21.76$$
+
+   $$\hat{y} = 21.76 + 3.0191 X$$
+
+> [!note] Interpretation of Coefficients
+> - **Slope ($\beta_1 = 3.02$)**: For every additional $1\text{ km}$ of delivery distance, predicted delivery duration increases by approximately $3.02\text{ minutes}$.
+> - **Intercept ($\beta_0 = 21.76$)**: The baseline preparation and handover overhead (at $0\text{ km}$) is approximately $21.76\text{ minutes}$.
+
+4. **Predict for New Input**:
+   For a delivery of distance $X = 10\text{ km}$:
+   $$\hat{y} = 21.76 + 3.0191(10) = 21.76 + 30.191 = 51.951 \approx 52.0\text{ minutes}$$
+
+---
+
+## 2.3 Decision Tree (DT) Regression
+
+A Decision Tree for regression constructs a hierarchical sequence of binary decision thresholds, splitting the dataset into orthogonal hypercubes where predictions are piecewise constants.
+
+```mermaid
+flowchart TD
+    Root["Root Node<br>Distance ≤ 8.725 km?"]
+    Root -- Yes --> Left["Left Leaf<br>y ∈ {37, 43}<br>Prediction = 40.00 min"]
+    Root -- No --> Right["Right Leaf<br>y ∈ {59, 84, 68}<br>Prediction = 70.33 min"]
+```
+
+> [!info] Fundamental Mechanism
+> Decision Tree Regression does **not** fit a continuous straight line. It partitions input space into discrete subsets and predicts the **sample mean** of the target values belonging to the terminal leaf node.
+
+### 2.3.1 Splitting Criterion: Variance Reduction
+At each node, the algorithm evaluates all candidate features and split thresholds to maximize **Variance Reduction (VR)**:
+$$\text{Var}(\text{node}) = \frac{1}{N}\sum_{i=1}^N (y_i - \bar{y})^2$$
+$$\text{Weighted Var}(\text{children}) = \left(\frac{n_L}{N}\right)\text{Var}(L) + \left(\frac{n_R}{N}\right)\text{Var}(R)$$
+$$\text{Variance Reduction} = \text{Var}(\text{parent}) - \text{Weighted Var}(\text{children})$$
+
+### 2.3.2 Step-by-Step Decision Tree Construction Example
+Using the sorted delivery distance dataset:
+- $X = [7.44, 7.93, 9.52, 16.42, 19.03]$
+- $y = [37, 43, 59, 84, 68]$ ($N = 5$)
+
+1. **Calculate Parent Node Variance**:
+   $$\bar{y} = \frac{37 + 43 + 59 + 84 + 68}{5} = 58.20$$
+   $$\text{SSE}_{\text{parent}} = (37-58.2)^2 + (43-58.2)^2 + (59-58.2)^2 + (84-58.2)^2 + (68-58.2)^2 = 1,442.80$$
+   $$\text{Var}(\text{parent}) = \frac{1,442.80}{5} = 288.56$$
+
+2. **Evaluate Candidate Midpoint Splits**:
+
+| Candidate | Split Threshold Calculation | Rule | Left $y$ Partition | Right $y$ Partition | Weighted Child Variance | Variance Reduction |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | $(7.44 + 7.93)/2 = 7.685$ | $X \le 7.685$ | $[37]$ | $[43, 59, 84, 68]$ | $176.20$ | $112.36$ |
+| **2 (Best)** | **$(7.93 + 9.52)/2 = 8.725$** | **$X \le 8.725$** | **$[37, 43]$** | **$[59, 84, 68]$** | **$67.73$** | **$220.83$** |
+| 3 | $(9.52 + 16.42)/2 = 12.970$ | $X \le 12.970$ | $[37, 43, 59]$ | $[84, 68]$ | $77.33$ | $211.23$ |
+| 4 | $(16.42 + 19.03)/2 = 17.725$ | $X \le 17.725$ | $[37, 43, 59, 84]$ | $[68]$ | $264.55$ | $24.01$ |
+
+3. **Derive Terminal Leaf Predictions**:
+   - **Left Leaf ($X \le 8.725$)**:
+     $$\hat{y}_{\text{left}} = \frac{37 + 43}{2} = 40.00\text{ min}$$
+   - **Right Leaf ($X > 8.725$)**:
+     $$\hat{y}_{\text{right}} = \frac{59 + 84 + 68}{3} = 70.33\text{ min}$$
+
+4. **Predict for New Input ($X = 10\text{ km}$)**:
+   Since $10 > 8.725$, route sample to Right Leaf:
+   $$\hat{y} = 70.33\text{ minutes}$$
+
+---
+
+## 2.4 Random Forest (RF) Regression
+
+Random Forest is a bagging (bootstrap aggregating) ensemble method that constructs $T$ de-correlated decision trees in parallel and averages their predictions.
+
+```mermaid
+flowchart TD
+    Data["Training Data (N rows)"]
+    Data --> B1["Bootstrap Sample 1"]
+    Data --> B2["Bootstrap Sample 2"]
+    Data --> B3["Bootstrap Sample 3"]
+    
+    B1 --> T1["Tree 1 (h₁)"]
+    B2 --> T2["Tree 2 (h₂)"]
+    B3 --> T3["Tree 3 (h₃)"]
+    
+    T1 --> P1["Prediction ŷ₁"]
+    T2 --> P2["Prediction ŷ₂"]
+    T3 --> P3["Prediction ŷ₃"]
+    
+    P1 --> Avg["Average: ŷ_RF = (1/T) ∑ h_t(x)"]
+    P2 --> Avg
+    P3 --> Avg
+```
+
+### 2.4.1 Five-Step Architecture of Random Forests
+1. **Bootstrap Sampling**: Draw $T$ random subsets of size $N$ from the training set with replacement (some rows repeat, $\approx 36.8\%$ out-of-bag).
+2. **Train Independent Trees**: Fit a separate decision tree on each bootstrap sample.
+3. **Random Feature Subspace**: At every candidate split, consider only a random subset of features (typically $\sqrt{p}$ or $p/3$), ensuring trees remain de-correlated.
+4. **Individual Tree Predictions**: Each tree generates an independent continuous estimate $h_t(x)$.
+5. **Aggregation**: Compute the ensemble mean:
+   $$\hat{y}_{\text{RF}} = \frac{1}{T}\sum_{t=1}^T h_t(x)$$
+
+### 2.4.2 Numerical Calculation Walkthrough ($T = 3$ Trees)
+Predict delivery time for $X = 10\text{ km}$:
+
+| Tree ($t$) | Bootstrap Sample | Selected Optimal Split | Leaf Assignment for $X = 10$ | Leaf Prediction ($h_t(x)$) |
+| :--- | :--- | :--- | :--- | :--- |
+| $T_1$ | $\{A, B, C, D, E\}$ | $X \le 8.725$ | Right Leaf $\{C, D, E\} = [59, 84, 68]$ | $\hat{y}_1 = \frac{59 + 84 + 68}{3} = 70.33\text{ min}$ |
+| $T_2$ | $\{A, B, C, C, E\}$ | $X \le 8.725$ | Right Leaf $\{C, C, E\} = [59, 59, 68]$ | $\hat{y}_2 = \frac{59 + 59 + 68}{3} = 62.00\text{ min}$ |
+| $T_3$ | $\{B, C, D, E, E\}$ | $X \le 12.970$ | Left Leaf $\{B, C\} = [43, 59]$ | $\hat{y}_3 = \frac{43 + 59}{2} = 51.00\text{ min}$ |
+
+Final Ensemble Prediction:
+$$\hat{y}_{\text{RF}} = \frac{70.33 + 62.00 + 51.00}{3} = \frac{183.33}{3} = 61.11\text{ minutes}$$
+
+---
+
+## 2.5 The No Free Lunch Theorem
+
+> [!info] The "No Free Lunch" (NFL) Principle
+> Stated by David Wolpert: **No single machine learning model universally outperforms all other models across every possible problem.** 
+> Every algorithm embodies inductive biases and structural assumptions that make it effective on certain data manifolds but inferior on others.
+
+### Strategic Guidelines
+- **Diversify Model Families**: Benchmark distinct mathematical architectures ($k$-NN, Regularized Linear Models, Decision Trees, Random Forests, Gradient Boosters, SVMs, Neural Networks).
+- **Avoid Premature Deep Tuning**: Do not invest extensive compute in optimizing hyperparameters for a single model before identifying 2 to 5 top-performing baseline architectures.
+- **Shortlist Promising Candidates**: Select the top 2-3 performing architectures for rigorous cross-validation and hyperparameter search.
+
+---
+
+## 2.6 Regression Performance Evaluation Metrics
+
+Evaluation quantifies prediction discrepancies against known ground-truth targets on held-out data:
+
+| Metric | Formula | Description & Characteristics | Ideal Value |
+| :--- | :--- | :--- | :--- |
+| **Mean Absolute Error (MAE)** | $\text{MAE} = \frac{1}{n}\sum_{i=1}^n \|y_i - \hat{y}_i\|$ | Linear average penalty; robust to extreme outliers; retains original target units. | $\downarrow 0$ |
+| **Mean Squared Error (MSE)** | $\text{MSE} = \frac{1}{n}\sum_{i=1}^n (y_i - \hat{y}_i)^2$ | Quadratic penalty; heavily punishes large errors; differentiable for gradient descent. | $\downarrow 0$ |
+| **Root Mean Squared Error (RMSE)** | $\text{RMSE} = \sqrt{\text{MSE}}$ | Square root of MSE; sensitive to large errors while preserving the original physical units. | $\downarrow 0$ |
+| **Mean Absolute Percentage Error (MAPE)** | $\text{MAPE} = \frac{100}{n}\sum_{i=1}^n \left\|\frac{y_i - \hat{y}_i}{y_i}\right\|$ | Dimensionless relative percentage error; intuitive for executive reporting. | $\downarrow 0\%$ |
+| **Coefficient of Determination ($R^2$)** | $R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2} = 1 - \frac{SS_{\text{res}}}{SS_{\text{tot}}}$ | Proportion of total variance in the dependent variable explained by model predictors. | $\uparrow 1.0$ |
+| **Adjusted $R^2$** | $\bar{R}^2 = 1 - (1 - R^2)\frac{n - 1}{n - p - 1}$ | Modifies $R^2$ to penalize the addition of uninformative independent predictors ($p$). | $\uparrow 1.0$ |
+
+---
+
+## 2.7 Underfitting, Overfitting, and Generalization
+
+```mermaid
+flowchart LR
+    Underfit["Underfitting<br>High Train Error<br>High Test Error<br>Model Too Simple"]
+    GoodFit["Good Fit<br>Low Train Error<br>Low Test Error<br>Generalizes Well"]
+    Overfit["Overfitting<br>Low Train Error<br>High Test Error<br>Memorizes Noise"]
+```
+
+| State | Training Error | Test/Val Error | Root Cause | Remediation |
+| :--- | :--- | :--- | :--- | :--- |
+| **Underfitting (High Bias)** | High | High | Hypothesis class too constrained; insufficient feature complexity. | Add features/polynomial terms; increase model depth; reduce regularization penalty. |
+| **Good Fit (Optimal Trade-off)** | Low | Low | Model captures underlying functional pattern without fitting noise. | Model ready for deployment and monitoring. |
+| **Overfitting (High Variance)** | Low | High | Model excessively complex; memorizes sample noise and training quirks. | Prune trees; apply $L_1/L_2$ regularization; collect more data; perform feature selection. |
+
+---
+
+## 2.8 Cross-Validation (CV) Strategies
+
+> [!warning] Test Set Contamination
+> Never evaluate candidate models or tune hyperparameters using the test set. Doing so causes **data leakage**, resulting in overly optimistic generalization estimates that fail in production.
+
+```mermaid
+flowchart LR
+    D["Full Dataset"] --> T["Training Set<br>(Fit Models)"]
+    D --> V["Validation Set<br>(Compare & Tune)"]
+    D --> E["Test Set<br>(Final Unbiased Evaluation)"]
+```
+
+### Common Cross-Validation Taxonomies
+1. **$k$-Fold Cross-Validation**: Divides the training set into $k$ equal folds. Iteratively trains on $k-1$ folds and validates on the remaining fold ($k$ cycles). The overall performance estimate is:
+   $$\text{CV Score} = \frac{1}{K}\sum_{k=1}^K \text{Score}_k$$
+2. **Stratified $k$-Fold**: Ensures each fold contains approximately the identical ratio of target classes (essential for imbalanced classification).
+3. **Leave-One-Out CV (LOOCV)**: $k = N$. Trains on $N-1$ samples and validates on $1$ sample. Exhaustive but computationally prohibitive for large datasets.
+4. **Time Series Split (Rolling Window)**: Enforces temporal ordering ($Train_{t < T} \to Validate_{t = T}$) to prevent future information leaking into the past.
+5. **Group $k$-Fold**: Ensures samples originating from the same entity/subject are never split across both train and validation partitions simultaneously.
+
+---
+
+## 2.9 Stage 6: Fine-Tune the Model (Hyperparameter Optimization)
+
+- **Model Parameters**: Weights learned internally during optimization (e.g., linear slopes $\beta$, neural network weights $W$).
+- **Hyperparameters**: Structural configuration settings established prior to training (e.g., tree `max_depth`, `n_estimators`, learning rate $\alpha$).
+
+```mermaid
+flowchart TD
+    Tune["Hyperparameter Search Strategies"]
+    Tune --> Grid["Grid Search<br>Exhaustive combinatorial testing<br>Optimal for small spaces"]
+    Tune --> Rand["Random Search<br>Samples probability distributions<br>Efficient for high dimensions"]
+    Tune --> Bayes["Bayesian Optimization<br>Probabilistic surrogate models (GP)<br>Focuses on promising regions"]
+```
+
+### Grid Search vs. Random Search Comparison
+
+| Dimension | Grid Search | Random Search |
+| :--- | :--- | :--- |
+| **Mechanism** | Tests all Cartesian combinations $\theta \in \Theta$. | Randomly samples $S$ parameter tuples from $\Theta$. |
+| **Search Space** | Discrete grid only. | Continuous distributions or large discrete sets. |
+| **Dimensional Efficiency** | Suffers from the curse of dimensionality ($O(m^p)$). | Highly efficient when only a subset of hyperparameters matter. |
+| **Guarantees** | Guaranteed to find the optimal grid point. | Probabilistically discovers near-optimal configurations in fewer trials. |
+
+#### Mathematical Formulation
+$$\theta^* = \arg\min_{\theta \in \Theta} \text{CV}(\theta) = \arg\min_{\theta \in \Theta} \frac{1}{K}\sum_{k=1}^K \text{Loss}_k(\theta)$$
+
+---
+
+## 2.10 Stage 7: Launch, Monitor, and Maintain
+
+Deploying the regression model to production initiates an active operational lifecycle:
+
+1. **Connect Input Source**: Package model artifacts (e.g., via ONNX, FastAPI, Docker) into production service pipelines.
+2. **Automated Pipeline Testing**: Implement unit tests for data schemas and integration tests for latency and output boundaries.
+3. **Continuous Performance Monitoring**: Track live inference metrics, residual errors, and prediction drift.
+4. **Data Quality & Distribution Auditing**: Detect data drift (covariate shift) and concept drift (changing relationships between $\mathbf{X}$ and $y$).
+5. **Human-in-the-Loop Review**: Route anomalous or high-impact predictions to human domain experts.
+6. **Scheduled Retraining**: Re-fit pipelines on rolling windows of fresh data to mitigate model decay.
+7. **Versioned Rollback Snapshots**: Maintain model registries to allow instant rollback to a previous version if errors occur.
+
+---
+
+## 2.11 Comprehensive Practical Exercise: Ice Cream Sales Analysis
+
+### Problem Scenario
+A vendor tracks daily promotional spending ($x$ in thousands) and actual sales ($y$ in units):
+
+| Day | Promotion Spending $x$ | Actual Ice Cream Sales $y$ |
+| :--- | :--- | :--- |
+| 1 | 2 | 120 |
+| 2 | 4 | 150 |
+| 3 | 6 | 180 |
+| 4 | 8 | 210 |
+| 5 | 10 | 240 |
+
+Target Query: Predict sales when promotion spending $x = 7$.
+
+---
+
+### Part A: Linear Regression Solution
+1. **Calculate Means**:
+   $$\bar{x} = \frac{2 + 4 + 6 + 8 + 10}{5} = \frac{30}{5} = 6.0$$
+   $$\bar{y} = \frac{120 + 150 + 180 + 210 + 240}{5} = \frac{900}{5} = 180.0$$
+
+2. **Calculate Slope ($b_1$)**:
+   - $(x_i - \bar{x}) = [-4, -2, 0, 2, 4]$
+   - $(y_i - \bar{y}) = [-60, -30, 0, 30, 60]$
+   - $\sum (x_i - \bar{x})(y_i - \bar{y}) = (-4)(-60) + (-2)(-30) + 0 + (2)(30) + (4)(60) = 240 + 60 + 0 + 60 + 240 = 600$
+   - $\sum (x_i - \bar{x})^2 = (-4)^2 + (-2)^2 + 0^2 + 2^2 + 4^2 = 16 + 4 + 0 + 4 + 16 = 40$
+   $$b_1 = \frac{600}{40} = 15.0$$
+
+3. **Calculate Intercept ($b_0$)**:
+   $$b_0 = \bar{y} - b_1 \bar{x} = 180 - (15.0 \times 6.0) = 180 - 90 = 90.0$$
+
+4. **Fitted Equation & Prediction**:
+   $$\hat{y} = 90 + 15x$$
+   For $x = 7$:
+   $$\hat{y} = 90 + 15(7) = 90 + 105 = 195\text{ units}$$
+
+---
+
+### Part B: Decision Tree Regression Solution
+Given split condition: $x \le 6$
+
+1. **Leaf Partitions and Predictions**:
+   - **Left Leaf ($x \le 6$)**: Contains days $\{1, 2, 3\}$ with $y = [120, 150, 180]$
+     $$\hat{y}_{\text{left}} = \frac{120 + 150 + 180}{3} = \frac{450}{3} = 150\text{ units}$$
+   - **Right Leaf ($x > 6$)**: Contains days $\{4, 5\}$ with $y = [210, 240]$
+     $$\hat{y}_{\text{right}} = \frac{210 + 240}{2} = \frac{450}{2} = 225\text{ units}$$
+
+2. **Sum of Squared Errors (SSE)**:
+   - $\text{SSE}_{\text{left}} = (120 - 150)^2 + (150 - 150)^2 + (180 - 150)^2 = 900 + 0 + 900 = 1,800$
+   - $\text{SSE}_{\text{right}} = (210 - 225)^2 + (240 - 225)^2 = 225 + 225 = 450$
+   $$\text{SSE}_{\text{total}} = 1,800 + 450 = 2,250$$
+
+3. **Prediction for $x = 7$**:
+   Since $7 > 6$, sample is routed to Right Leaf:
+   $$\hat{y} = 225\text{ units}$$
+
+---
+
+### Part C: Random Forest Regression Solution
+Given individual tree predictions for $x = 7$:
+- Tree 1: $\hat{y}_1 = 195$
+- Tree 2: $\hat{y}_2 = 210$
+- Tree 3: $\hat{y}_3 = 225$
+
+1. **Ensemble Prediction**:
+   $$\hat{y}_{\text{RF}} = \frac{\hat{y}_1 + \hat{y}_2 + \hat{y}_3}{3} = \frac{195 + 210 + 225}{3} = \frac{630}{3} = 210\text{ units}$$
+
+2. **Methodological Comparison**:
+   - **Linear Regression ($195$)**: Assumes a continuous global linear function across all feature space; outputs an exact interpolated line point.
+   - **Decision Tree ($225$)**: Discretizes feature space into step functions; predicts the average of the closest localized cluster ($x > 6$).
+   - **Random Forest ($210$)**: Smoothes step discontinuities by averaging multiple bootstrap tree estimates, balancing linear extrapolation and localized clustering.
+
+---
+
+### Part D: Performance Metrics Calculation
+
+| Day | Actual Sales $y_i$ | Predicted Sales $\hat{y}_i$ | Error $(y_i - \hat{y}_i)$ | Absolute Error $\|y_i - \hat{y}_i\|$ | Squared Error $(y_i - \hat{y}_i)^2$ | Percentage Error $\left\|\frac{y_i - \hat{y}_i}{y_i}\right\| \times 100\%$ |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | 120 | 115 | $+5$ | 5 | 25 | $\frac{5}{120} \approx 4.17\%$ |
+| 2 | 150 | 160 | $-10$ | 10 | 100 | $\frac{10}{150} \approx 6.67\%$ |
+| 3 | 180 | 175 | $+5$ | 5 | 25 | $\frac{5}{180} \approx 2.78\%$ |
+| 4 | 210 | 220 | $-10$ | 10 | 100 | $\frac{10}{210} \approx 4.76\%$ |
+| 5 | 240 | 230 | $+10$ | 10 | 100 | $\frac{10}{240} \approx 4.17\%$ |
+| **Sum** | | | | **40** | **350** | **$22.55\%$** |
+
+1. **Mean Absolute Error (MAE)**:
+   $$\text{MAE} = \frac{40}{5} = 8.0\text{ units}$$
+2. **Mean Squared Error (MSE)**:
+   $$\text{MSE} = \frac{350}{5} = 70.0$$
+3. **Root Mean Squared Error (RMSE)**:
+   $$\text{RMSE} = \sqrt{70.0} \approx 8.3666 \approx 8.37\text{ units}$$
+4. **Mean Absolute Percentage Error (MAPE)**:
+   $$\text{MAPE} = \frac{22.55\%}{5} = 4.51\%$$
+5. **$R$-Squared ($R^2$)**:
+   Given $SS_{\text{res}} = 350$, $SS_{\text{tot}} = 9,000$:
+   $$R^2 = 1 - \frac{350}{9,000} = 1 - 0.03889 = 0.9611$$
+6. **Adjusted $R$-Squared ($\bar{R}^2$)**:
+   Given $R^2 = 0.9611, n = 20, p = 3$:
+   $$\bar{R}^2 = 1 - (1 - 0.9611) \frac{20 - 1}{20 - 3 - 1} = 1 - (0.0389) \frac{19}{16} = 1 - (0.0389 \times 1.1875) = 1 - 0.04619 = 0.9538$$
+
+
+
+---
+
+# Topic 3: The Classification Pipeline
+
+## 3.1 Overview of Classification
+
+Classification is a primary pillar of supervised machine learning tasked with assigning input instances to predefined discrete categorical classes.
+
+> [!info] Definition: Classification
+> Classification learns a hypothesis mapping function $h(\mathbf{x})$ that predicts a discrete qualitative output label $y \in \{C_1, C_2, \dots, C_K\}$ from an input feature vector $\mathbf{X} = [x_1, x_2, \dots, x_n]$:
+> $$\mathbf{X} \xrightarrow{h(\mathbf{x})} \hat{y} \in \mathcal{C}$$
+> While regression answers *"How much?"* or *"How many?"*, classification answers *"Which category does this input belong to?"* (e.g., spam vs. ham, malignant vs. benign, fraud vs. legitimate).
+
+```mermaid
+flowchart LR
+    Msg["Incoming Emails"] --> Model["Trained Classification Model"]
+    Model --> Spam["Spam Folder<br>(Class 1: Spam)"]
+    Model --> Ham["Inbox<br>(Class 0: Ham)"]
+```
+
+### The Seven-Stage Pipeline for Classification
+The classification pipeline mirrors the standard machine learning life-cycle introduced in regression, differing primarily in algorithm taxonomy, cost function definitions, and evaluation metrics:
+1. **Look at the Big Picture**: Problem formulation, business objectives, baseline definition.
+2. **Get Data**: Data collection (APIs, scraping, databases).
+3. **Explore Data**: Check class balance, distributions, feature correlations.
+4. **Prepare Data**: Train/test split (stratified), imputation, one-hot encoding, scaling.
+5. **Select & Train Models**: Train eager and lazy classification algorithms.
+6. **Fine-tune Models**: Cross-validation, hyperparameter tuning, threshold optimization.
+7. **Launch & Monitor**: Real-time deployment, drift detection, metric tracking.
+
+---
+
+## 3.2 Classification Algorithm Taxonomy
+
+Different classifiers establish decision boundaries using distinct geometric, probabilistic, or structural assumptions:
+
+```mermaid
+flowchart TD
+    Algorithms["Classification Algorithms"]
+    Algorithms --> Linear["Linear Models<br>• Logistic Regression<br>• Linear Discriminant Analysis (LDA)<br>• Passive Aggressive Classifier"]
+    Algorithms --> Distance["Distance & Instance-Based<br>• K-Nearest Neighbors (k-NN)<br>• Nearest Centroid"]
+    Algorithms --> Tree["Tree & Ensemble Models<br>• Decision Trees<br>• Random Forest<br>• XGBoost / LightGBM / AdaBoost"]
+    Algorithms --> Margin["Margin & Support Vectors<br>• Linear Support Vector Machine (SVM)<br>• Kernel SVM (RBF, Poly)"]
+    Algorithms --> Prob["Probabilistic Models<br>• Naive Bayes (Gaussian, Multinomial)"]
+    Algorithms --> Neural["Neural Network Models<br>• Multi-Layer Perceptron (MLP)<br>• Deep Neural Networks"]
+```
+
+---
+
+## 3.3 Types of Learners: Lazy vs. Eager Learning
+
+Supervised classifiers are classified into two computational paradigms based on when generalization occurs:
+
+| Architectural Aspect | Lazy Learning (Instance-Based) | Eager Learning (Model-Based) |
+| :--- | :--- | :--- |
+| **Generalization Timing** | **Delayed / At Query Time**: Does not generalize from training data during the fitting phase. | **Immediate / At Training Time**: Generalizes data into an explicit abstract model during training. |
+| **Model Construction** | **No explicit model**: Training merely stores raw training instances in memory. | **Explicit model constructed**: Optimizes weights $\mathbf{w}$, intercepts $b$, or hierarchical split trees. |
+| **Training Time** | **$O(1)$ / Minimal**: Merely indexing or storing data records. | **High**: Iterative numerical optimization, gradient descent, or combinatorial tree splitting. |
+| **Prediction / Inference Time** | **$O(N \cdot d)$ / High**: Must compute distances against all stored training points for every new query. | **$O(d)$ / Very Low**: Simple mathematical function evaluation (e.g., dot product $\mathbf{w}^T\mathbf{x} + b$). |
+| **Memory Footprint** | **High**: The complete training corpus must permanently reside in memory. | **Low**: Raw training instances can be discarded; only parameters/weights are preserved. |
+| **Representative Algorithms** | $k$-Nearest Neighbors ($k$-NN), Case-Based Reasoning. | Logistic Regression, Decision Trees, Support Vector Machines, Naive Bayes, Neural Networks. |
+
+---
+
+## 3.4 Types of Classification Tasks
+
+Classification tasks are organized into three primary operational structures:
+
+```mermaid
+flowchart TD
+    Tasks["Classification Problem Types"]
+    Tasks --> Binary["Binary Classification<br>Two mutually exclusive classes<br>e.g., Spam (1) vs. Ham (0)"]
+    Tasks --> MultiClass["Multiclass Classification<br>≥ 3 mutually exclusive classes<br>Single label per instance<br>e.g., Truck vs. Plane vs. Boat"]
+    Tasks --> MultiLabel["Multi-label Classification<br>≥ 2 non-exclusive classes<br>Multiple labels per instance<br>e.g., Song is Pop + Sad + Romantic"]
+```
+
+---
+
+## 3.5 Binary Classification & Decision Tree Splitting
+
+Binary classification predicts one of two mutually exclusive categories: $y \in \{0, 1\}$.
+
+### 3.5.1 Impurity Metrics for Tree Splitting
+
+A decision tree splits a parent node into left ($L$) and right ($R$) children to maximize node purity (minimizing impurity).
+
+#### 1. Gini Impurity
+Measures the probability of misclassifying a randomly chosen element from the set if it were randomly labeled according to the class distribution:
+$$\text{Gini} = 1 - \sum_{i=1}^C p_i^2$$
+where $p_i$ is the relative proportion of class $i$ within the node.
+- Purity limits: $\text{Gini} = 0$ (perfect purity; all samples belong to one class). For binary tasks, $\max \text{Gini} = 0.50$ (worst case; exactly $50/50$ distribution).
+
+#### 2. Weighted Gini After Split
+$$\text{Gini}_{\text{split}} = \left(\frac{n_L}{n}\right)\text{Gini}_L + \left(\frac{n_R}{n}\right)\text{Gini}_R$$
+
+#### 3. Gini Impurity Gain
+$$\text{Gain} = \text{Gini}_{\text{parent}} - \text{Gini}_{\text{split}}$$
+The algorithm evaluates all features and candidate thresholds, selecting the split that yields the **highest Gini Gain**.
+
+#### 4. Entropy and Information Gain (Alternative Criterion)
+$$\text{Entropy} = -\sum_{i=1}^C p_i \log_2(p_i)$$
+$$\text{Information Gain} = \text{Entropy}_{\text{parent}} - \left[\frac{n_L}{n}\text{Entropy}_L + \frac{n_R}{n}\text{Entropy}_R\right]$$
+
+---
+
+### 3.5.2 Student Placement Case Study (Gini Calculation Walkthrough)
+
+**Dataset Context**: $9,000$ university students evaluated for campus placement:
+- Target Classes: `Placed` ($1$) vs. `Not Placed` ($0$).
+- Total Parent Distribution:
+  - $\text{Placed} = 7,702 \implies p_1 = \frac{7,702}{9,000} \approx 0.8558$
+  - $\text{Not Placed} = 1,298 \implies p_0 = \frac{1,298}{9,000} \approx 0.1442$
+
+1. **Calculate Parent Node Gini**:
+   $$\text{Gini}_{\text{parent}} = 1 - (0.8558)^2 - (0.1442)^2 = 1 - 0.73239 - 0.02079 = 0.2468$$
+
+2. **Evaluate Candidate Root Split: $\text{Backlogs} = 0$**:
+   - **Left Node ($\text{Backlogs} = 0$, $n_L = 6,349$)**:
+     - $\text{Placed} = 5,799 \implies p_1 = \frac{5,799}{6,349} \approx 0.9134$
+     - $\text{Not Placed} = 550 \implies p_0 = \frac{550}{6,349} \approx 0.0866$
+     $$\text{Gini}_L = 1 - (0.9134)^2 - (0.0866)^2 = 1 - 0.83430 - 0.00750 = 0.1582$$
+   - **Right Node ($\text{Backlogs} > 0$, $n_R = 2,651$)**:
+     - $\text{Placed} = 1,903 \implies p_1 = \frac{1,903}{2,651} \approx 0.7178$
+     - $\text{Not Placed} = 748 \implies p_0 = \frac{748}{2,651} \approx 0.2822$
+     $$\text{Gini}_R = 1 - (0.7178)^2 - (0.2822)^2 = 1 - 0.51524 - 0.07964 = 0.4051$$
+
+3. **Compute Weighted Child Gini & Gain**:
+   $$\text{Gini}_{\text{split}} = \left(\frac{6,349}{9,000} \times 0.1582\right) + \left(\frac{2,651}{9,000} \times 0.4051\right) = 0.1116 + 0.1193 = 0.2310$$
+   $$\text{Gain} = \text{Gini}_{\text{parent}} - \text{Gini}_{\text{split}} = 0.2468 - 0.2310 = 0.0159$$
+
+4. **Candidate Split Comparison Table**:
+
+| Candidate Split | $n_L$ | $n_R$ | Weighted Gini | Gini Gain | Decision |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`backlogs = 0`** | **6,349** | **2,651** | **0.2310** | **0.0159** | **Selected Best Root Split** |
+| `college_tier <= 2` | 5,934 | 3,066 | 0.2374 | 0.0094 | Rejected |
+| `skill_score >= 3` | 2,353 | 6,647 | 0.2384 | 0.0085 | Rejected |
+| `internships >= 1` | 5,793 | 3,207 | 0.2387 | 0.0081 | Rejected |
+| `coding_score >= 50` | 4,469 | 4,531 | 0.2390 | 0.0079 | Rejected |
+| `dsa_skill = 1` | 5,000 | 4,000 | 0.2415 | 0.0054 | Rejected |
+| `projects >= 3` | 6,001 | 2,999 | 0.2416 | 0.0053 | Rejected |
+
+---
+
+## 3.6 Multiclass Classification Strategies
+
+Multiclass classification assigns an instance to exactly one category among $C \ge 3$ candidate classes. Strictly binary classifiers (e.g., standard Perceptrons, classic SVMs, Logistic Regression) are adapted for multiclass tasks using decomposition strategies:
+
+### 3.6.1 One-versus-One (OvO)
+Trains a distinct binary classifier for every unique pair of classes:
+$$N_{\text{OvO}} = \frac{C(C - 1)}{2}$$
+- **Prediction Rule**: Each binary classifier casts a vote for its predicted winner. The sample is assigned to the class with the most aggregate votes:
+  $$\hat{y} = \arg\max_k \text{Votes}(k)$$
+- **Example ($C = 3$: Plane, Truck, Boat)**:
+  - Classifiers: $N_{\text{OvO}} = \frac{3(2)}{2} = 3$ models:
+    1. *Classifier 1 (Plane vs. Truck)*: Plane wins (1 vote Plane).
+    2. *Classifier 2 (Plane vs. Boat)*: Plane wins (1 vote Plane).
+    3. *Classifier 3 (Truck vs. Boat)*: Boat wins (1 vote Boat).
+  - Voting Tally: Plane $= 2$, Boat $= 1$, Truck $= 0 \implies$ **Final Prediction: Plane**.
+
+### 3.6.2 One-versus-Rest (OvR / One-vs-All)
+Trains $C$ binary classifiers, where classifier $k$ treats class $k$ as the positive class ($1$) and all other $C-1$ classes combined as the negative class ($0$):
+$$N_{\text{OvR}} = C$$
+- **Prediction Rule**: Each classifier produces a continuous decision confidence score or probability $f_k(\mathbf{x})$. The class with the highest confidence is selected:
+  $$\hat{y} = \arg\max_k f_k(\mathbf{x})$$
+- **Example ($C = 3$: Plane, Truck, Boat)**:
+  - Classifier 1 (*Plane vs. Not-Plane*): Score $= 0.82$
+  - Classifier 2 (*Truck vs. Not-Truck*): Score $= 0.35$
+  - Classifier 3 (*Boat vs. Not-Boat*): Score $= 0.58$
+  - Highest Score $= 0.82 \implies$ **Final Prediction: Plane**.
+
+---
+
+## 3.7 Distance-Based Classification: $k$-Nearest Neighbors ($k$-NN)
+
+$k$-NN is a non-parametric lazy learning algorithm that determines class membership based on local neighborhood geometry.
+
+### 3.7.1 Mathematical Formulation
+1. **Distance Metric (Euclidean Distance)**:
+   $$d(\mathbf{X}, \mathbf{X}_i) = \sqrt{\sum_{j=1}^d (x_j - x_{ij})^2}$$
+2. **Neighborhood Selection**: Sort distances and select the $K$ smallest entries: $\mathcal{N}_K(\mathbf{X})$.
+3. **Voting Rule**:
+   $$\hat{y} = \text{mode}\left(\{y_i \mid \mathbf{X}_i \in \mathcal{N}_K(\mathbf{X})\}\right)$$
+
+> [!warning] Hyperparameter $K$ Trade-Offs
+> - **Small $K$ (e.g., $K = 1$)**: High model complexity, low bias, but very high variance; highly vulnerable to noise and mislabeled outliers.
+> - **Large $K$**: High bias, low variance, smoother decision boundaries; risks diluting minority classes with dominant majority background classes.
+
+### 3.7.2 Multiclass $k$-NN Job Role Prediction & Tie-Breaking
+Given training records of placed students:
+- Target Classes: `Software Engineer` (SE), `Data Scientist` (DS), `Analyst` (A), `Web Developer` (WD).
+- Query Sample: New Student $X = (\text{CGPA} = 5.20, \text{Coding Score} = 18.00)$.
+
+| Student | CGPA | Coding Score | Job Role | Distance Calculation $d(X, X_i) = \sqrt{(\Delta\text{CGPA})^2 + (\Delta\text{Code})^2}$ | Euclidean Distance | Rank |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **S21** | 5.21 | 18.40 | Software Engineer | $\sqrt{(5.20-5.21)^2 + (18.00-18.40)^2} = \sqrt{0.0001 + 0.1600}$ | **0.40** | **1st** |
+| **S20** | 5.19 | 27.20 | Data Scientist | $\sqrt{(5.20-5.19)^2 + (18.00-27.20)^2} = \sqrt{0.0001 + 84.6400}$ | **9.20** | **2nd** |
+| **S22** | 6.40 | 42.00 | Analyst | $\sqrt{(5.20-6.40)^2 + (18.00-42.00)^2} = \sqrt{1.4400 + 576.0000}$ | **24.03** | **3rd** |
+| S24 | 5.35 | 57.50 | Web Developer | $\sqrt{(5.20-5.35)^2 + (18.00-57.50)^2} = \sqrt{0.0225 + 1560.2500}$ | 39.50 | 4th |
+
+#### Voting with $K = 3$:
+- The three nearest neighbors are: $\text{1st: S21 (SE)}$, $\text{2nd: S20 (DS)}$, $\text{3rd: S22 (A)}$.
+- Vote distribution: 1 vote SE, 1 vote DS, 1 vote Analyst $\implies$ **3-way tie**.
+- **Tie-Breaking Rule**: When a voting stalemate occurs, select the class corresponding to the single closest neighbor among the candidates.
+- Closest neighbor is **S21** ($d = 0.40$) $\implies$ **Final Prediction: Software Engineer**.
+
+---
+
+## 3.8 Multi-label Classification & Support Vector Machines (SVM)
+
+In multi-label classification, output labels are non-mutually exclusive; an input instance may be labeled with zero, one, or several classes simultaneously.
+
+### 3.8.1 Binary Relevance Decomposition
+Binary Relevance fits $L$ separate binary classifiers (one per label). Each classifier independently determines whether the input possesses that specific label:
+$$\hat{y}_l = \mathbb{I}\left(f_l(\mathbf{x}) \ge 0\right), \quad \text{for } l = 1, \dots, L$$
+
+### 3.8.2 Linear SVM Decision Function
+$$f(\mathbf{x}) = \mathbf{w}^T\mathbf{x} + b = \sum_{j=1}^d w_j x_j + b$$
+- If $f(\mathbf{x}) \ge 0 \implies \text{Class } 1$ (Label Present)
+- If $f(\mathbf{x}) < 0 \implies \text{Class } 0$ (Label Absent)
+
+### 3.8.3 Music Auto-Tagging Case Study
+Given a generated song with extracted audio features:
+- $\mathbf{x} = [\text{Tempo} = 0.45, \text{Energy} = 0.35, \text{Romance Score} = 0.80]$
+
+| Label Classifier | Bias $b$ | $w_1$ (Tempo) | $w_2$ (Energy) | $w_3$ (Romance) | Decision Score Calculation $f(\mathbf{x}) = \mathbf{w}^T\mathbf{x} + b$ | Score | Binary Output |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Pop** | $-0.10$ | $+0.60$ | $+0.80$ | $+0.20$ | $-0.10 + (0.60 \times 0.45) + (0.80 \times 0.35) + (0.20 \times 0.80)$ | **$+0.610$** | **1 (Present)** |
+| **Sad** | $+0.05$ | $-0.40$ | $-0.90$ | $+0.70$ | $+0.05 - (0.40 \times 0.45) - (0.90 \times 0.35) + (0.70 \times 0.80)$ | **$+0.115$** | **1 (Present)** |
+| **Romantic** | $-0.20$ | $+0.10$ | $-0.20$ | $+1.30$ | $-0.20 + (0.10 \times 0.45) - (0.20 \times 0.35) + (1.30 \times 0.80)$ | **$+0.815$** | **1 (Present)** |
+| **Dance** | $-0.20$ | $+0.70$ | $+1.20$ | $-0.80$ | $-0.20 + (0.70 \times 0.45) + (1.20 \times 0.35) - (0.80 \times 0.80)$ | **$-0.105$** | **0 (Absent)** |
+
+- **Output Binary Vector**: $[1, 1, 1, 0]$
+- **Predicted Tags**: **Pop + Sad + Romantic**
+
+---
+
+## 3.9 Comprehensive Classification Evaluation Metrics
+
+```mermaid
+flowchart TD
+    subgraph ConfusionMatrix["Confusion Matrix (Ground Truth vs. Prediction)"]
+        direction TB
+        Row1["Actual Positive (P): TP + FN"]
+        Row2["Actual Negative (N): FP + TN"]
+    end
+```
+
+| Metric | Mathematical Formula | Definition & Practical Importance | Ideal Value |
+| :--- | :--- | :--- | :--- |
+| **Accuracy** | $\frac{TP + TN}{TP + TN + FP + FN}$ | Overall percentage of correct predictions. Highly misleading on imbalanced data. | $\uparrow 1.0$ ($100\%$) |
+| **Precision** | $\frac{TP}{TP + FP}$ | Fraction of predicted positives that are true positives. Critical when **False Positives are costly** (e.g., spam detection, fraud flagging). | $\uparrow 1.0$ |
+| **Recall (Sensitivity, TPR)** | $\frac{TP}{TP + FN}$ | Fraction of actual positives correctly recovered. Critical when **False Negatives are dangerous** (e.g., disease diagnosis, missile alert). | $\uparrow 1.0$ |
+| **Specificity (TNR)** | $\frac{TN}{TN + FP}$ | Fraction of actual negatives correctly rejected. | $\uparrow 1.0$ |
+| **False Positive Rate (FPR)** | $\frac{FP}{FP + TN} = 1 - \text{Specificity}$ | Probability of a false alarm among actual negative events. | $\downarrow 0.0$ |
+| **False Negative Rate (FNR)** | $\frac{FN}{FN + TP} = 1 - \text{Recall}$ | Miss rate of positive events. | $\downarrow 0.0$ |
+| **$F_1$-Score** | $2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2TP}{2TP + FP + FN}$ | Harmonic mean balancing Precision and Recall; robust metric for imbalanced classes. | $\uparrow 1.0$ |
+| **Log Loss (Cross-Entropy)** | $-\frac{1}{n}\sum [y\log(p) + (1-y)\log(1-p)]$ | Penalizes confident incorrect probabilistic estimates. | $\downarrow 0.0$ |
+
+---
+
+## 3.10 Advanced Threshold Analysis & Curves
+
+Most modern classifiers output an internal continuous probability or decision score $p = P(y = 1 \mid \mathbf{x})$, converting it to a discrete class via a decision threshold $\tau$:
+$$\hat{y} = \begin{cases} 1 & \text{if } p \ge \tau \\ 0 & \text{if } p < \tau \end{cases}$$
+
+```mermaid
+flowchart LR
+    LowTau["Lower Threshold (τ ↓)"] --> HighRec["Recall Increases<br>Precision Decreases<br>(More False Alarms)"]
+    HighTau["Raise Threshold (τ ↑)"] --> HighPrec["Precision Increases<br>Recall Decreases<br>(Conservative Predictions)"]
+```
+
+### 3.10.1 The Receiver Operating Characteristic (ROC) Curve
+- Plots **True Positive Rate (TPR / Recall)** on the $y$-axis versus **False Positive Rate (FPR)** on the $x$-axis across all possible thresholds $\tau \in [0, 1]$.
+- A random guess classifier produces a $45^\circ$ diagonal line ($AUC = 0.50$). A superior classifier arcs sharply toward the top-left coordinate $(0, 1)$.
+- **Area Under the ROC Curve (ROC-AUC)**:
+  - $0.50$: No discriminative capacity (random guessing).
+  - $0.70 - 0.80$: Acceptable discrimination.
+  - $0.80 - 0.90$: Excellent discrimination.
+  - $> 0.90$: Outstanding performance.
+
+### 3.10.2 The Precision-Recall (PR) Curve
+- Plots **Precision** ($y$-axis) against **Recall** ($x$-axis).
+- The ideal curve arcs toward the top-right coordinate $(1, 1)$.
+- **Crucial Rule**: Use the **PR Curve and PR-AUC** instead of ROC-AUC when evaluating datasets with severe class imbalance, as ROC curves can paint an overly optimistic picture due to large true negative counts.
+
+---
+
+## 3.11 Multiclass Metric Aggregation: Macro vs. Weighted
+
+Given a $4 \times 4$ Multiclass Confusion Matrix ($N = 80$ samples):
+
+| Actual \ Predicted | Predicted A | Predicted B | Predicted C | Predicted D | Total Actual ($TP_i + FN_i$) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Actual A** | **9** | 1 | 0 | 0 | **10** |
+| **Actual B** | 1 | **15** | 3 | 1 | **20** |
+| **Actual C** | 5 | 0 | **24** | 1 | **30** |
+| **Actual D** | 0 | 4 | 1 | **15** | **20** |
+| **Total Predicted ($TP_i + FP_i$)** | **15** | **20** | **28** | **17** | **$N = 80$** |
+
+### 3.11.1 Overall Accuracy
+$$\text{Accuracy} = \frac{\text{Trace}(\mathbf{M})}{N} = \frac{9 + 15 + 24 + 15}{80} = \frac{63}{80} = 0.7875\text{ (78.75\%)}$$
+
+### 3.11.2 One-vs-Rest Decomposition per Class
+- **Class A**:
+  - $TP_A = 9$
+  - $FP_A = 1 + 5 + 0 = 6$
+  - $FN_A = 1 + 0 + 0 = 1$
+  - $TN_A = 15 + 3 + 1 + 0 + 24 + 1 + 4 + 1 + 15 = 64$
+  - $\text{Precision}_A = \frac{9}{9 + 6} = \frac{9}{15} = 0.6000$
+  - $\text{Recall}_A = \frac{9}{9 + 1} = \frac{9}{10} = 0.9000$
+- **Class B**:
+  - $TP_B = 15, \quad FP_B = 1 + 0 + 4 = 5, \quad FN_B = 1 + 3 + 1 = 5, \quad TN_B = 55$
+  - $\text{Precision}_B = \frac{15}{20} = 0.7500, \quad \text{Recall}_B = \frac{15}{20} = 0.7500$
+- **Class C**:
+  - $TP_C = 24, \quad FP_C = 0 + 3 + 1 = 4, \quad FN_C = 5 + 0 + 1 = 6, \quad TN_C = 46$
+  - $\text{Precision}_C = \frac{24}{28} \approx 0.8571, \quad \text{Recall}_C = \frac{24}{30} = 0.8000$
+- **Class D**:
+  - $TP_D = 15, \quad FP_D = 0 + 1 + 1 = 2, \quad FN_D = 0 + 4 + 1 = 5, \quad TN_D = 58$
+  - $\text{Precision}_D = \frac{15}{17} \approx 0.8824, \quad \text{Recall}_D = \frac{15}{20} = 0.7500$
+
+### 3.11.3 Macro Averages
+$$\text{Macro Precision} = \frac{\frac{9}{15} + \frac{15}{20} + \frac{24}{28} + \frac{15}{17}}{4} = \frac{0.6000 + 0.7500 + 0.8571 + 0.8824}{4} = \frac{3.0895}{4} = 0.7724$$
+$$\text{Macro Recall} = \frac{\frac{9}{10} + \frac{15}{20} + \frac{24}{30} + \frac{15}{20}}{4} = \frac{0.9000 + 0.7500 + 0.8000 + 0.7500}{4} = \frac{3.2000}{4} = 0.8000$$
+
+---
+
+## 3.12 Practical Exercises & Solutions
+
+### Exercise Q5: Binary Spam Confusion Matrix
+> [!example] Problem
+> Given the spam classification results:
+> 
+> | Actual \ Predicted | Predicted Spam | Predicted Not Spam |
+> | :--- | :--- | :--- |
+> | **Actual Spam** | 30 | 10 |
+> | **Actual Not Spam** | 5 | 55 |
+> 
+> Calculate Accuracy, Precision, Recall, and $F_1$-score.
+
+> [!tip] Solution
+> - $TP = 30$, $FN = 10$, $FP = 5$, $TN = 55$. Total $N = 100$.
+> 1. $\text{Accuracy} = \frac{TP + TN}{N} = \frac{30 + 55}{100} = \frac{85}{100} = 0.85\text{ (85\%)}$
+> 2. $\text{Precision} = \frac{TP}{TP + FP} = \frac{30}{30 + 5} = \frac{30}{35} \approx 0.8571\text{ (85.71\%)}$
+> 3. $\text{Recall} = \frac{TP}{TP + FN} = \frac{30}{30 + 10} = \frac{30}{40} = 0.75\text{ (75.00\%)}$
+> 4. $F_1\text{-score} = 2 \times \frac{0.8571 \times 0.75}{0.8571 + 0.75} = \frac{1.28565}{1.6071} \approx 0.8000\text{ (80.00\%)}$
+
+---
+
+### Exercise Q10: Decision Threshold Tuning
+> [!example] Problem
+> Five instances evaluated with decision rule: $\text{Class} = 1$ if $\text{Score} \ge 1.0$, else $0$:
+> 
+> | Sample | Model Score | Actual Class |
+> | :--- | :--- | :--- |
+> | S1 | 0.30 | 0 |
+> | S2 | 0.40 | 0 |
+> | S3 | 1.50 | 1 |
+> | S4 | 0.90 | 1 |
+> | S5 | 1.20 | 1 |
+> 
+> a) Determine predictions. b) Build confusion matrix. c) Compute Precision and Recall. d) Explain trade-off.
+
+> [!tip] Solution
+> a) **Predictions**:
+> - S1: $0.30 < 1.0 \implies 0$ (Correct, TN)
+> - S2: $0.40 < 1.0 \implies 0$ (Correct, TN)
+> - S3: $1.50 \ge 1.0 \implies 1$ (Correct, TP)
+> - S4: $0.90 < 1.0 \implies 0$ (Missed, FN)
+> - S5: $1.20 \ge 1.0 \implies 1$ (Correct, TP)
+> 
+> b) **Confusion Matrix**:
+> - $TP = 2$ (S3, S5)
+> - $FP = 0$
+> - $FN = 1$ (S4)
+> - $TN = 2$ (S1, S2)
+> 
+> c) **Metrics**:
+> - $\text{Precision} = \frac{TP}{TP + FP} = \frac{2}{2 + 0} = 1.00\text{ (100\%)}$
+> - $\text{Recall} = \frac{TP}{TP + FN} = \frac{2}{2 + 1} = \frac{2}{3} \approx 0.6667\text{ (66.67\%)}$
+> 
+> d) **Trade-off Interpretation**:
+> Setting a high threshold ($\tau = 1.0$) enforces conservative predictions. The model achieves **perfect precision** ($0$ false alarms), but suffers a lower recall because borderline positive instances (S4 with score $0.90$) are missed.
+
+
+
+---
+
+# Topic 4: Logistic Regression & Probabilistic Classification
+
+## 4.1 Foundations of Logistic Regression
+
+Logistic Regression is an eager, parametric classification algorithm that estimates the posterior probability that a given observation belongs to a particular class.
+
+```mermaid
+flowchart LR
+    X["Input Features (x)<br>e.g., Balance, Tumor Size"] --> Lin["Linear Score<br>z = θᵀx"]
+    Lin --> Sig["Sigmoid Function<br>p̂ = σ(z)"]
+    Sig --> Pred["Decision Threshold<br>p̂ ≥ 0.5 → Class 1<br>p̂ < 0.5 → Class 0"]
+```
+
+> [!info] Core Identity
+> Despite containing the word *"Regression"*, **Logistic Regression is strictly a classification algorithm**. It models the probability of categorical outcomes by mapping an unbounded continuous linear combination of features through the non-linear **logistic (sigmoid) function**.
+
+### Why Linear Regression Fails for Classification
+Applying Ordinary Least Squares (OLS) Linear Regression directly to classification exhibits critical structural flaws:
+1. **Unbounded Predictions**: Linear regression outputs real values on $(-\infty, +\infty)$, producing probabilities outside the legitimate range $[0, 1]$ (e.g., $\hat{y} = -0.4$ or $\hat{y} = 1.3$).
+2. **Sensitivity to Distant Outliers**: Adding valid training points with extreme feature values far from the decision boundary tilts the OLS regression line significantly, shifting the decision threshold and generating erroneous misclassifications.
+3. **Violation of Constant Variance (Heteroscedasticity)**: In binary data, the variance $\text{Var}(y \mid x) = p(x)(1 - p(x))$ depends on $x$, violating the standard OLS homoscedasticity assumption.
+
+---
+
+## 4.2 The Hypothesis Function & The Sigmoid Curve
+
+To constrain the model predictions strictly within the valid probabilistic interval $[0, 1]$, the linear score $z = \boldsymbol{\theta}^T\mathbf{x}$ is mapped through the **Sigmoid Function** $\sigma(z)$:
+
+$$\sigma(z) = \frac{1}{1 + e^{-z}} = \frac{e^z}{1 + e^z}$$
+
+```mermaid
+flowchart LR
+    Z["Linear Logit (z) ∈ (-∞, +∞)"] --> Sig["Sigmoid σ(z)"] --> Prob["Probability p̂ ∈ (0, 1)"]
+```
+
+### Mathematical Properties of the Sigmoid Function
+- **Range Boundaries**: $0 < \sigma(z) < 1$ for all real $z$.
+- **Symmetry Point**: $\sigma(0) = 0.5$.
+- **Asymptotic Limits**: $\lim_{z \to +\infty} \sigma(z) = 1$ and $\lim_{z \to -\infty} \sigma(z) = 0$.
+- **Derivative Property**: $\frac{d\sigma(z)}{dz} = \sigma(z)(1 - \sigma(z))$.
+
+### Hypothesis Representation
+$$h_{\boldsymbol{\theta}}(\mathbf{x}) = \hat{p} = \sigma(\boldsymbol{\theta}^T\mathbf{x}) = \frac{1}{1 + e^{-\boldsymbol{\theta}^T\mathbf{x}}}$$
+- **Positive Class Probability**: $h_{\boldsymbol{\theta}}(\mathbf{x}) = P(y = 1 \mid \mathbf{x}; \boldsymbol{\theta})$
+- **Negative Class Probability**: $1 - h_{\boldsymbol{\theta}}(\mathbf{x}) = P(y = 0 \mid \mathbf{x}; \boldsymbol{\theta})$
+
+---
+
+## 4.3 Decision Boundary Formulation
+
+The classifier predicts the positive class ($y = 1$) whenever the estimated probability exceeds or equals the standard decision threshold $\tau = 0.5$:
+$$\hat{y} = \begin{cases} 1 & \text{if } \hat{p} \ge 0.5 \\ 0 & \text{if } \hat{p} < 0.5 \end{cases}$$
+
+Since $\sigma(z) \ge 0.5$ if and only if $z \ge 0$, the decision rule simplifies to evaluating the sign of the linear score:
+$$\boldsymbol{\theta}^T\mathbf{x} \ge 0 \implies \hat{y} = 1$$
+$$\boldsymbol{\theta}^T\mathbf{x} < 0 \implies \hat{y} = 0$$
+
+> [!important] The Decision Boundary Equation
+> The geometric decision boundary is the hyperplane separating the feature space where the model is completely uncertain ($\hat{p} = 0.5$):
+> $$\boldsymbol{\theta}^T\mathbf{x} = 0$$
+
+### 4.3.1 One-Dimensional Decision Boundary Example
+Given parameter vector $\boldsymbol{\theta} = [\theta_0 = 3, \theta_1 = -2]^T$ and input $x$:
+$$z = \theta_0 + \theta_1 x = 3 - 2x = 0 \implies 2x = 3 \implies x = 1.5$$
+- For $x = 0$: $z = 3 - 2(0) = +3 > 0 \implies \hat{p} = \sigma(3) \approx 0.9526 > 0.5 \implies \hat{y} = 1$ (Positive).
+- For $x = 1.5$: $z = 3 - 2(1.5) = 0 \implies \hat{p} = \sigma(0) = 0.50$ (On Boundary).
+- For $x = 3.0$: $z = 3 - 2(3) = -3 < 0 \implies \hat{p} = \sigma(-3) \approx 0.0474 < 0.5 \implies \hat{y} = 0$ (Negative).
+
+---
+
+### 4.3.2 Two-Dimensional Decision Boundary Example
+Given parameter vector $\boldsymbol{\theta} = [\theta_0 = -3, \theta_1 = 1, \theta_2 = 1]^T$ with feature vector $\mathbf{x} = [1, x_1, x_2]^T$:
+$$\boldsymbol{\theta}^T\mathbf{x} = -3 + x_1 + x_2 = 0 \implies x_1 + x_2 = 3 \iff x_2 = 3 - x_1$$
+- **On Boundary Point $(2, 1)$**: $-3 + 2 + 1 = 0 \implies \hat{p} = 0.5$.
+- **Positive Region Point $(3, 3)$**: $-3 + 3 + 3 = +3 > 0 \implies \hat{p} > 0.5 \implies \hat{y} = 1$.
+- **Negative Region Point $(1, 1)$**: $-3 + 1 + 1 = -1 < 0 \implies \hat{p} < 0.5 \implies \hat{y} = 0$.
+
+---
+
+## 4.4 Training Logistic Regression: Cross-Entropy Loss
+
+Using Mean Squared Error (MSE) on logistic regression yields a non-convex cost function with numerous local minima due to the non-linear sigmoid transformation. Instead, logistic regression employs **Cross-Entropy Loss (Log Loss)** derived from maximum likelihood estimation:
+
+### 4.4.1 Cost Function Definition
+$$c(\boldsymbol{\theta}) = \begin{cases} -\log(\hat{p}) & \text{if } y = 1 \\ -\log(1 - \hat{p}) & \text{if } y = 0 \end{cases}$$
+
+> [!note] Intuitive Mechanics
+> - If $y = 1$ and $\hat{p} \to 1$: $\text{Cost} = -\log(1) = 0$ (correct prediction receives zero penalty).
+> - If $y = 1$ and $\hat{p} \to 0$: $\text{Cost} \to \infty$ (confident incorrect prediction is penalized infinitely).
+> - If $y = 0$ and $\hat{p} \to 0$: $\text{Cost} = -\log(1) = 0$.
+> - If $y = 0$ and $\hat{p} \to 1$: $\text{Cost} \to \infty$.
+
+### 4.4.2 Unified Cross-Entropy Cost Function
+Over $m$ training samples, the average cost is formulated as:
+$$J(\boldsymbol{\theta}) = -\frac{1}{m}\sum_{i=1}^m \left[ y^{(i)}\log\left(\hat{p}^{(i)}\right) + (1 - y^{(i)})\log\left(1 - \hat{p}^{(i)}\right) \right]$$
+
+#### Vectorized Representation:
+$$J(\boldsymbol{\theta}) = \frac{1}{m}\left[ -\mathbf{y}^T\log(\mathbf{h}) - (\mathbf{1} - \mathbf{y})^T\log(\mathbf{1} - \mathbf{h}) \right]$$
+where $\mathbf{h} = \sigma(\mathbf{X}\boldsymbol{\theta})$ is the $m \times 1$ probability vector.
+
+---
+
+## 4.5 Minimizing $J(\boldsymbol{\theta})$ via Gradient Descent
+
+There is **no closed-form analytic solution** (normal equation) for logistic regression parameters. However, the cross-entropy cost function $J(\boldsymbol{\theta})$ is mathematically proven to be **strictly convex**, guaranteeing that Gradient Descent converges to the global minimum given an appropriate learning rate $\eta$.
+
+### 4.5.1 Gradient Derivation
+$$\nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) = \frac{1}{m} \mathbf{X}^T \left( \sigma(\mathbf{X}\boldsymbol{\theta}) - \mathbf{y} \right) = \frac{1}{m} \mathbf{X}^T (\hat{\mathbf{p}} - \mathbf{y})$$
+
+### 4.5.2 Parameter Update Equation
+$$\boldsymbol{\theta} := \boldsymbol{\theta} - \eta \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) = \boldsymbol{\theta} - \frac{\eta}{m} \mathbf{X}^T (\hat{\mathbf{p}} - \mathbf{y})$$
+
+---
+
+## 4.6 Comprehensive Numerical Walkthrough: Model Evaluation & Gradient Step
+
+### Scenario Context
+Given four training samples ($m = 4$):
+
+| Sample | Feature $x$ | Ground Truth $y$ | Binary Label |
+| :--- | :--- | :--- | :--- |
+| 1 | 3 | No | 0 |
+| 2 | 5 | No | 0 |
+| 3 | 7 | Yes | 1 |
+| 4 | 9 | Yes | 1 |
+
+---
+
+### Step 1: Evaluate Model A ($\theta_0 = -3, \theta_1 = 0.5$)
+$$z = -3 + 0.5x, \quad \hat{p} = \frac{1}{1 + e^{-z}}$$
+
+| $x$ | $z = -3 + 0.5x$ | $\hat{p} = \sigma(z)$ | Predicted $\hat{y}$ ($\hat{p} \ge 0.5$) | Actual $y$ | Correct? |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 3 | $-3 + 0.5(3) = -1.5$ | $\frac{1}{1 + e^{1.5}} \approx 0.1824$ | 0 | 0 | Yes |
+| 5 | $-3 + 0.5(5) = -0.5$ | $\frac{1}{1 + e^{0.5}} \approx 0.3775$ | 0 | 0 | Yes |
+| 7 | $-3 + 0.5(7) = +0.5$ | $\frac{1}{1 + e^{-0.5}} \approx 0.6225$ | 1 | 1 | Yes |
+| 9 | $-3 + 0.5(9) = +1.5$ | $\frac{1}{1 + e^{-1.5}} \approx 0.8176$ | 1 | 1 | Yes |
+
+$$\text{Accuracy}_{\text{Model A}} = \frac{4}{4} = 1.00\text{ (100\%)}$$
+
+---
+
+### Step 2: Evaluate Model B ($\theta_0 = -1, \theta_1 = 0.3$)
+$$z = -1 + 0.3x, \quad \hat{p} = \frac{1}{1 + e^{-z}}$$
+
+| $x$ | $z = -1 + 0.3x$ | $\hat{p} = \sigma(z)$ | Predicted $\hat{y}$ ($\hat{p} \ge 0.5$) | Actual $y$ | Correct? |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 3 | $-1 + 0.3(3) = -0.1$ | $\frac{1}{1 + e^{0.1}} \approx 0.4750$ | 0 | 0 | Yes |
+| 5 | $-1 + 0.3(5) = +0.5$ | $\frac{1}{1 + e^{-0.5}} \approx 0.6225$ | 1 | 0 | **No (FP)** |
+| 7 | $-1 + 0.3(7) = +1.1$ | $\frac{1}{1 + e^{-1.1}} \approx 0.7503$ | 1 | 1 | Yes |
+| 9 | $-1 + 0.3(9) = +1.7$ | $\frac{1}{1 + e^{-1.7}} \approx 0.8455$ | 1 | 1 | Yes |
+
+$$\text{Accuracy}_{\text{Model B}} = \frac{3}{4} = 0.75\text{ (75\%)}$$
+
+> [!note] Decision
+> Model A achieves higher initial accuracy ($100\%$ vs. $75\%$) because its decision boundary correctly separates all samples.
+
+---
+
+### Step 3: Compute One Step of Gradient Descent on Model B
+Initialize parameters: $\boldsymbol{\theta} = [-1.0, 0.3]^T$ with learning rate $\eta = 0.01$.
+
+1. **Construct Matrices**:
+   $$\mathbf{X} = \begin{bmatrix} 1 & 3 \\ 1 & 5 \\ 1 & 7 \\ 1 & 9 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \end{bmatrix}$$
+   $$\hat{\mathbf{p}} = \begin{bmatrix} 0.4750 \\ 0.6225 \\ 0.7503 \\ 0.8455 \end{bmatrix}$$
+
+2. **Compute Error Vector $\mathbf{d} = \hat{\mathbf{p}} - \mathbf{y}$**:
+   $$\mathbf{d} = \begin{bmatrix} 0.4750 - 0 \\ 0.6225 - 0 \\ 0.7503 - 1 \\ 0.8455 - 1 \end{bmatrix} = \begin{bmatrix} +0.4750 \\ +0.6225 \\ -0.2497 \\ -0.1545 \end{bmatrix}$$
+
+3. **Compute Matrix Product $\mathbf{X}^T \mathbf{d}$**:
+   $$\mathbf{X}^T\mathbf{d} = \begin{bmatrix} 1 & 1 & 1 & 1 \\ 3 & 5 & 7 & 9 \end{bmatrix} \begin{bmatrix} 0.4750 \\ 0.6225 \\ -0.2497 \\ -0.1545 \end{bmatrix}$$
+   - **First Component ($\theta_0$)**:
+     $$1(0.4750) + 1(0.6225) + 1(-0.2497) + 1(-0.1545) = 0.6933$$
+   - **Second Component ($\theta_1$)**:
+     $$3(0.4750) + 5(0.6225) + 7(-0.2497) + 9(-0.1545) = 1.4250 + 3.1125 - 1.7479 - 1.3905 = 1.3991 \approx 1.3990$$
+
+4. **Compute Gradient $\nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) = \frac{1}{m} \mathbf{X}^T \mathbf{d}$**:
+   $$\nabla_{\theta_0} J = \frac{0.6933}{4} = 0.173325 \approx 0.1733$$
+   $$\nabla_{\theta_1} J = \frac{1.3990}{4} = 0.349750 \approx 0.3497$$
+
+5. **Perform Parameter Update ($\boldsymbol{\theta} := \boldsymbol{\theta} - \eta \nabla J$)**:
+   $$\theta_0 := -1 - 0.01(0.1733) = -1 - 0.001733 = -1.0017$$
+   $$\theta_1 := 0.3 - 0.01(0.3497) = 0.3 - 0.003497 = 0.2965$$
+
+$$\boldsymbol{\theta}_{\text{updated}} = \begin{bmatrix} -1.0017 \\ 0.2965 \end{bmatrix}$$
+
+
+
+---
+
+# Topic 5: Unsupervised Learning & Clustering Architectures
+
+## 5.1 Foundations of Unsupervised Learning
+
+Unsupervised learning analyzes unlabelled datasets to automatically discover underlying structure, groupings, density patterns, and feature relationships without human supervision.
+
+```mermaid
+flowchart LR
+    Data["Unlabelled Input Data (X)<br>Features only, no labels y"] --> Sim["Similarity / Distance Metric<br>Euclidean, Density, Cosine"]
+    Sim --> Rule["Unsupervised Learning Rule<br>Clustering, Reduction, Association"]
+    Rule --> Out["Discovered Structure<br>Clusters, Latent Spaces, Anomalies"]
+```
+
+> [!info] Core Distinction
+> While supervised learning fits parameters to predict an explicit ground-truth target $y$, unsupervised learning operates exclusively on the feature matrix $\mathbf{X}$. The algorithm identifies natural geometry, cluster boundaries, or low-dimensional manifolds inherent in the data.
+
+### Four Major Tasks of Unsupervised Learning
+1. **Clustering**: Partitioning unlabelled data points into cohesive groups based on geometric proximity or density.
+2. **Association Rule Mining**: Discovering co-occurrence patterns among features (e.g., market basket analysis: $\text{Diapers} \implies \text{Beer}$).
+3. **Dimensionality Reduction**: Projecting high-dimensional feature spaces into compact representations while preserving information variance (e.g., PCA, t-SNE).
+4. **Anomaly / Outlier Detection**: Identifying rare observations that deviate substantially from baseline data distributions.
+
+---
+
+## 5.2 Taxonomy of Clustering Families
+
+Clustering methods differ fundamentally in how cluster membership and boundary geometries are defined:
+
+```mermaid
+flowchart TD
+    Families["Clustering Paradigms"]
+    Families --> Excl["1. Exclusive (Hard) Clustering<br>• One point → exactly one cluster<br>• Centroid-based<br>• e.g., K-Means"]
+    Families --> Over["2. Overlapping (Soft) Clustering<br>• Continuous membership degree u_ij ∈ [0, 1]<br>• Probabilistic / Fuzzy<br>• e.g., Fuzzy C-Means, GMM"]
+    Families --> Hier["3. Hierarchical Clustering<br>• Nested clusters across multiple scales<br>• Dendrogram representation<br>• e.g., Agglomerative, Divisive"]
+    Families --> Dens["4. Density-Based Clustering<br>• Arbitrary non-spherical shapes<br>• Isolates noise points<br>• e.g., DBSCAN, OPTICS"]
+```
+
+| Family | Geometric Mechanism | Cluster Membership | Representative Algorithms | Key Strengths |
+| :--- | :--- | :--- | :--- | :--- |
+| **Exclusive (Hard)** | Nearest centroid optimization | Hard: $x_i \in C_k$ exclusively | $K$-Means, $K$-Medoids | Computationally efficient ($O(N)$); scales to large datasets. |
+| **Overlapping (Soft)** | Membership-weighted centroids | Soft: $\sum_j u_{ij} = 1, u_{ij} \in [0, 1]$ | Fuzzy $C$-Means (FCM), GMM | Handles ambiguous boundary points naturally. |
+| **Hierarchical** | Greedy pairwise merge/split | Multi-level tree (Dendrogram) | Agglomerative, Divisive | Does not require pre-specifying $K$; reveals nested taxonomic hierarchy. |
+| **Density-Based** | Density reachability & connectivity | Core, Border, Noise | DBSCAN, OPTICS, HDBSCAN | Discovers arbitrary non-convex geometries; immune to noise. |
+
+---
+
+## 5.3 Exclusive Clustering: The $K$-Means Algorithm
+
+$K$-Means partitions $N$ observations into $k$ non-overlapping clusters by iteratively assigning points to the closest centroid and recomputing centroids.
+
+```mermaid
+flowchart LR
+    S1["1. Choose k<br>Elbow / Silhouette"] --> S2["2. Initialize Centroids<br>k random points"]
+    S2 --> S3["3. Assign Points<br>argmin d(x_i, μ_j)"]
+    S3 --> S4["4. Update Centroids<br>μ_j = Mean of Cluster j"]
+    S4 --> S5{"Centroids<br>Stabilized?"}
+    S5 -- No --> S3
+    S5 -- Yes --> Done["Converged: Final Clusters"]
+```
+
+### 5.3.1 Mathematical Objective: Minimizing WCSS / Inertia
+$$J = \text{WCSS} = \sum_{j=1}^k \sum_{\mathbf{x}_i \in C_j} \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2$$
+- **Assignment Step**:
+  $$C_i = \arg\min_j \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2$$
+- **Centroid Update Step**:
+  $$\boldsymbol{\mu}_j = \frac{1}{|C_j|}\sum_{\mathbf{x}_i \in C_j} \mathbf{x}_i$$
+- **Convergence Condition**:
+  $$\|\boldsymbol{\mu}_j^{(t)} - \boldsymbol{\mu}_j^{(t-1)}\| < \epsilon$$
+
+### 5.3.2 Complete Numerical Walkthrough: 2D Patient Clustering
+**Dataset**: Four patient records evaluated on two clinical indices $(x, y)$:
+- $P_1 = (2, 10)$
+- $P_2 = (2, 5)$
+- $P_3 = (8, 4)$
+- $P_4 = (5, 8)$
+- Initial Seed Centroids: $C_1 = (2, 10)$ and $C_2 = (8, 4)$
+
+#### Iteration 1: Distance Calculation & Assignment
+Euclidean Distance: $d(P, C) = \sqrt{(x_P - x_C)^2 + (y_P - y_C)^2}$
+
+| Point | Coordinates | Distance to $C_1(2, 10)$ | Distance to $C_2(8, 4)$ | Assigned Cluster |
+| :--- | :--- | :--- | :--- | :--- |
+| **$P_1$** | $(2, 10)$ | $\sqrt{(2-2)^2 + (10-10)^2} = \mathbf{0.00}$ | $\sqrt{(2-8)^2 + (10-4)^2} = \sqrt{72} \approx 8.49$ | **$C_1$** |
+| **$P_2$** | $(2, 5)$ | $\sqrt{(2-2)^2 + (5-10)^2} = \sqrt{25} = \mathbf{5.00}$ | $\sqrt{(2-8)^2 + (5-4)^2} = \sqrt{37} \approx 6.08$ | **$C_1$** |
+| **$P_3$** | $(8, 4)$ | $\sqrt{(8-2)^2 + (4-10)^2} = \sqrt{72} \approx 8.49$ | $\sqrt{(8-8)^2 + (4-4)^2} = \mathbf{0.00}$ | **$C_2$** |
+| **$P_4$** | $(5, 8)$ | $\sqrt{(5-2)^2 + (8-10)^2} = \sqrt{13} \approx \mathbf{3.61}$ | $\sqrt{(5-8)^2 + (8-4)^2} = \sqrt{25} = 5.00$ | **$C_1$** |
+
+- **Cluster Allocations**: $C_1 = \{P_1, P_2, P_4\}$, $C_2 = \{P_3\}$.
+
+#### Iteration 1: Centroid Update
+$$\boldsymbol{\mu}_1 = \left( \frac{2 + 2 + 5}{3}, \frac{10 + 5 + 8}{3} \right) = \left( \frac{9}{3}, \frac{23}{3} \right) = (3.00, 7.67)$$
+$$\boldsymbol{\mu}_2 = (8.00, 4.00) \quad \text{(only $P_3$)}$$
+
+#### Iteration 2: Re-evaluation against Updated Centroids
+- $d(P_1, \boldsymbol{\mu}_1) = \sqrt{(2-3)^2 + (10-7.67)^2} = \sqrt{1 + 5.4289} = \mathbf{2.54} < d(P_1, \boldsymbol{\mu}_2) = 8.49 \implies C_1$
+- $d(P_2, \boldsymbol{\mu}_1) = \sqrt{(2-3)^2 + (5-7.67)^2} = \sqrt{1 + 7.1289} = \mathbf{2.85} < d(P_2, \boldsymbol{\mu}_2) = 6.08 \implies C_1$
+- $d(P_3, \boldsymbol{\mu}_1) = \sqrt{(8-3)^2 + (4-7.67)^2} = \sqrt{25 + 13.4689} = 6.20 > d(P_3, \boldsymbol{\mu}_2) = \mathbf{0.00} \implies C_2$
+- $d(P_4, \boldsymbol{\mu}_1) = \sqrt{(5-3)^2 + (8-7.67)^2} = \sqrt{4 + 0.1089} = \mathbf{2.03} < d(P_4, \boldsymbol{\mu}_2) = 5.00 \implies C_1$
+
+> [!note] Convergence
+> Cluster memberships remain identical ($C_1 = \{P_1, P_2, P_4\}$, $C_2 = \{P_3\}$). The algorithm converges and terminates.
+
+---
+
+## 5.4 Overlapping Clustering: Fuzzy $C$-Means (FCM)
+
+In Fuzzy $C$-Means, instances are not forced into a single exclusive cluster; each observation carries a continuous membership grade $u_{ij} \in [0, 1]$ across all $C$ clusters:
+$$\sum_{j=1}^C u_{ij} = 1, \quad \forall i$$
+
+### 5.4.1 Mathematical Objective
+$$J_m = \sum_{i=1}^N \sum_{j=1}^C u_{ij}^m \|\mathbf{x}_i - \mathbf{c}_j\|^2$$
+where $m > 1$ is the **fuzziness exponent** (conventionally $m = 2$).
+
+- **Centroid Update Formula**:
+  $$\mathbf{c}_j = \frac{\sum_{i=1}^N u_{ij}^m \mathbf{x}_i}{\sum_{i=1}^N u_{ij}^m}$$
+- **Membership Update Formula**:
+  $$u_{ij} = \frac{1}{\sum_{k=1}^C \left(\frac{\|\mathbf{x}_i - \mathbf{c}_j\|}{\|\mathbf{x}_i - \mathbf{c}_k\|}\right)^{\frac{2}{m-1}}}$$
+  For $C = 2$ clusters and $m = 2$:
+  $$u_{i1} = \frac{1}{1 + \left(\frac{d_{i1}}{d_{i2}}\right)^2}, \quad u_{i2} = 1 - u_{i1}$$
+
+### 5.4.2 Numerical Calculation Walkthrough ($m = 2$)
+Using the same initial centroids $C_1(2, 10)$ and $C_2(8, 4)$ on the 4 patients:
+
+#### Initial Membership Matrix:
+- $P_1(2, 10)$: Exact coincidence with $C_1 \implies u_{11} = 1.000, u_{12} = 0.000$.
+- $P_2(2, 5)$: $d_1 = 5.00, d_2 = 6.08 \implies u_{21} = \frac{1}{1 + (5.00/6.08)^2} = \frac{1}{1 + 0.6766} \approx \mathbf{0.597}, u_{22} = \mathbf{0.403}$.
+- $P_3(8, 4)$: Exact coincidence with $C_2 \implies u_{31} = 0.000, u_{32} = 1.000$.
+- $P_4(5, 8)$: $d_1 = 3.61, d_2 = 5.00 \implies u_{41} = \frac{1}{1 + (3.61/5.00)^2} = \frac{1}{1 + 0.5213} \approx \mathbf{0.657}, u_{42} = \mathbf{0.343}$.
+
+#### Recomputing Fuzzy Centroid $C_1$ ($w_{i1} = u_{i1}^2$):
+- Weights: $[1^2, 0.597^2, 0^2, 0.657^2] = [1.000, 0.356, 0.000, 0.432] \implies \sum w = 1.788$
+- $c_{1x} = \frac{1(2) + 0.356(2) + 0(8) + 0.432(5)}{1.788} = \frac{4.872}{1.788} \approx 2.72$
+- $c_{1y} = \frac{1(10) + 0.356(5) + 0(4) + 0.432(8)}{1.788} = \frac{15.236}{1.788} \approx 8.52$
+$$\mathbf{c}_1 = (2.72, 8.52)$$
+
+#### Recomputing Fuzzy Centroid $C_2$ ($w_{i2} = u_{i2}^2$):
+- Weights: $[0^2, 0.403^2, 1^2, 0.343^2] = [0.000, 0.162, 1.000, 0.118] \implies \sum w = 1.280$
+- $c_{2x} = \frac{0(2) + 0.162(2) + 1(8) + 0.118(5)}{1.280} = \frac{8.914}{1.280} \approx 6.96$
+- $c_{2y} = \frac{0(10) + 0.162(5) + 1(4) + 0.118(8)}{1.280} = \frac{5.754}{1.280} \approx 4.49$
+$$\mathbf{c}_2 = (6.96, 4.49)$$
+
+---
+
+## 5.5 Hierarchical Clustering
+
+Hierarchical clustering constructs a multi-level nesting tree known as a **Dendrogram**.
+
+```mermaid
+flowchart TD
+    Dendro["Root Cluster (All Data)"]
+    Dendro --> Sub1["Cluster AB"]
+    Dendro --> Sub2["Cluster CD"]
+    Sub1 --> L1["A"]
+    Sub1 --> L2["B"]
+    Sub2 --> L3["C"]
+    Sub2 --> L4["D"]
+```
+
+### 5.5.1 Directions of Hierarchy Construction
+- **Agglomerative (Bottom-Up)**: Begins with $N$ individual singleton clusters. At each iteration, the two most similar clusters are greedily merged until a single global cluster remains.
+- **Divisive (Top-Down)**: Begins with the entire dataset in one parent cluster. Iteratively bisects the most heterogeneous cluster into sub-clusters until all points are singletons.
+
+### 5.5.2 Inter-Cluster Linkage Criteria
+
+| Linkage Method | Mathematical Definition | Characteristic Geometry |
+| :--- | :--- | :--- |
+| **Single Linkage** | $D(A, B) = \min_{\mathbf{x} \in A, \mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$ | Chains together elongated, non-spherical clusters; sensitive to noise/outlier bridges. |
+| **Complete Linkage** | $D(A, B) = \max_{\mathbf{x} \in A, \mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$ | Enforces compact, spherical, equal-diameter clusters; sensitive to outliers. |
+| **Average Linkage** | $D(A, B) = \frac{1}{\|A\|\|B\|}\sum_{\mathbf{x} \in A}\sum_{\mathbf{y} \in B} d(\mathbf{x}, \mathbf{y})$ | Robust compromise balancing local proximity and global dispersion. |
+| **Ward's Method** | $\Delta\text{SSE} = \text{SSE}(A \cup B) - [\text{SSE}(A) + \text{SSE}(B)]$ | Merges clusters that yield the minimal increase in within-cluster variance. |
+
+### 5.5.3 Worked Linkage Example: Patient LDL Cholesterol
+- Cluster A (Normal): $P_1 = 105, P_2 = 115$
+- Cluster B (High): $P_3 = 185, P_4 = 195$
+- New Query Patient: $P_5 = 130$
+
+#### 1. Average Linkage Assignment:
+- $D(P_5, A) = \frac{|130 - 105| + |130 - 115|}{2} = \frac{25 + 15}{2} = \mathbf{20.00}$
+- $D(P_5, B) = \frac{|130 - 185| + |130 - 195|}{2} = \frac{55 + 65}{2} = \mathbf{60.00}$
+$$\text{Since } 20.00 < 60.00 \implies P_5 \text{ merges with Cluster A}$$
+
+#### 2. Ward's Minimum Variance Assignment:
+- Baseline SSE: $\mu_A = 110, \text{SSE}(A) = 25 + 25 = 50$; $\mu_B = 190, \text{SSE}(B) = 25 + 25 = 50 \implies \text{Total Baseline} = 100$.
+- **Hypothetical Merge $P_5 \to A$**:
+  - $A^* = \{105, 115, 130\} \implies \mu = \frac{350}{3} \approx 116.67$
+  - $\text{SSE}(A^*) = (105-116.67)^2 + (115-116.67)^2 + (130-116.67)^2 = 136.19 + 2.79 + 177.69 = 316.67$
+  - $\Delta\text{SSE}_A = (316.67 + 50) - 100 = \mathbf{266.67}$
+- **Hypothetical Merge $P_5 \to B$**:
+  - $B^* = \{185, 195, 130\} \implies \mu = \frac{510}{3} = 170.00$
+  - $\text{SSE}(B^*) = (185-170)^2 + (195-170)^2 + (130-170)^2 = 225 + 625 + 1600 = 2,450.00$
+  - $\Delta\text{SSE}_B = (2,450 + 50) - 100 = \mathbf{2,400.00}$
+$$\Delta\text{SSE}_A (266.67) \ll \Delta\text{SSE}_B (2,400.00) \implies P_5 \text{ merges with Cluster A}$$
+
+---
+
+## 5.6 Density-Based Clustering: DBSCAN
+
+DBSCAN (Density-Based Spatial Clustering of Applications with Noise) groups points that are densely packed together and marks points that lie alone in low-density regions as noise.
+
+```mermaid
+flowchart TD
+    Core["Core Point<br>|N_ε(p)| ≥ MinPts"] --> DirReach["Directly Density-Reachable<br>q ∈ N_ε(p)"]
+    DirReach --> Connected["Density-Connected Cluster<br>Chain of reachable cores"]
+    Noise["Isolated Point<br>|N_ε(p)| < MinPts & not reachable<br>Label = -1 (Noise)"]
+```
+
+### 5.6.1 Fundamental Concepts & Parameters
+1. **$\epsilon$ (Epsilon)**: Maximum radius defining the neighborhood around a sample:
+   $$N_\epsilon(\mathbf{p}) = \{\mathbf{q} \in D \mid \text{dist}(\mathbf{p}, \mathbf{q}) \le \epsilon\}$$
+2. **$\text{MinPts}$**: Minimum number of points within $N_\epsilon(\mathbf{p})$ required to classify $\mathbf{p}$ as a **Core Point**:
+   $$|N_\epsilon(\mathbf{p})| \ge \text{MinPts}$$
+3. **Point Categorization**:
+   - **Core Point**: Contains at least $\text{MinPts}$ within distance $\epsilon$.
+   - **Border Point**: Not a core point, but falls within the $\epsilon$-neighborhood of a core point.
+   - **Noise Point**: Neither core nor border point (assigned cluster label $-1$).
+4. **Density Reachability vs. Connectivity**:
+   - $\mathbf{q}$ is *directly density-reachable* from $\mathbf{p}$ if $\mathbf{q} \in N_\epsilon(\mathbf{p})$ and $\mathbf{p}$ is a core point.
+   - $\mathbf{p}$ and $\mathbf{q}$ are *density-connected* if there exists an intermediate point $\mathbf{o}$ such that both $\mathbf{p}$ and $\mathbf{q}$ are density-reachable from $\mathbf{o}$.
+
+---
+
+## 5.7 Unsupervised Model Validation Metrics
+
+Evaluating clustering requires distinct metrics depending on whether external ground-truth labels exist:
+
+### 5.7.1 Group 1: Internal Validation Metrics (No Labels Available)
+Given clusters $C_1 = \{1, 2, 3\}$ ($\mu_1 = 2$) and $C_2 = \{5, 6, 7\}$ ($\mu_2 = 6$) ($N = 6, k = 2$):
+
+#### 1. Silhouette Coefficient
+Compares intra-cluster cohesion $a(i)$ with nearest-cluster separation $b(i)$:
+$$s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}, \quad S = \frac{1}{n}\sum_{i=1}^n s(i) \in [-1, 1]$$
+- For $x = 1$: $a(1) = \frac{1 + 2}{2} = 1.50$; $b(1) = \frac{4 + 5 + 6}{3} = 5.00 \implies s(1) = \frac{5.00 - 1.50}{5.00} = 0.70$
+- Point scores: $[0.70, 0.75, 0.50, 0.50, 0.75, 0.70] \implies \bar{S} = \frac{3.90}{6} = \mathbf{0.65}$ (strong cluster structure).
+
+#### 2. Davies-Bouldin (DB) Index
+Measures worst-case cluster similarity by comparing cluster dispersion $S_i$ against centroid separation $M_{ij}$:
+$$R_{ij} = \frac{S_i + S_j}{M_{ij}}, \quad \text{DB} = \frac{1}{k}\sum_{i=1}^k \max_{j \neq i} R_{ij} \quad (\downarrow \text{Lower is better})$$
+- $S_1 = \frac{|1-2| + |2-2| + |3-2|}{3} = \frac{2}{3} \approx 0.6667, \quad S_2 = 0.6667$
+- $M_{12} = |2 - 6| = 4.0 \implies R_{12} = \frac{0.6667 + 0.6667}{4} = 0.3333$
+$$\text{DB} = \frac{0.3333 + 0.3333}{2} = \mathbf{0.3333}$$
+
+#### 3. Calinski-Harabasz (CH) Index (Variance Ratio Criterion)
+$$\text{CH} = \frac{B_k / (k - 1)}{W_k / (n - k)} \quad (\uparrow \text{Higher is better})$$
+- Overall mean $\mu = 4.0$. $W_k = \text{SSE}(C_1) + \text{SSE}(C_2) = 2 + 2 = 4.0$.
+- $B_k = 3(2 - 4)^2 + 3(6 - 4)^2 = 3(4) + 3(4) = 24.0$.
+$$\text{CH} = \frac{24 / (2 - 1)}{4 / (6 - 2)} = \frac{24 / 1}{4 / 4} = \frac{24}{1} = \mathbf{24.0}$$
+
+---
+
+### 5.7.2 Group 2: External Validation Metrics (Ground Truth Available)
+Given 6 samples with ground truth $T = [A, A, A, B, B, B]$ and clustering $C = [1, 1, 2, 2, 2, 2]$:
+
+| Contingency Table | Cluster 1 | Cluster 2 | Row Total |
+| :--- | :--- | :--- | :--- |
+| **Class A** | 2 | 1 | 3 |
+| **Class B** | 0 | 3 | 3 |
+| **Column Total** | **2** | **4** | **$N = 6$** |
+
+1. **Adjusted Rand Index (ARI)**:
+   $$\text{ARI} = \frac{\text{Index} - \text{Expected}}{\text{Max} - \text{Expected}} = \frac{4 - 2.8}{6.5 - 2.8} = \frac{1.2}{3.7} \approx \mathbf{0.3243}$$
+2. **Purity**:
+   $$\text{Purity} = \frac{1}{n}\sum_k \max_j |C_k \cap T_j| = \frac{\max(2, 0) + \max(1, 3)}{6} = \frac{2 + 3}{6} = \frac{5}{6} \approx \mathbf{0.8333}$$
+3. **Normalized Mutual Information (NMI)**:
+   $$\text{NMI} = \frac{2 I(T; C)}{H(T) + H(C)} = \frac{2(0.3183)}{0.6931 + 0.6365} = \frac{0.6366}{1.3296} \approx \mathbf{0.4787}$$
+4. **$V$-Measure**:
+   Harmonic mean of Homogeneity ($h = 0.4591$) and Completeness ($c = 0.5000$):
+   $$V = \frac{2 \times 0.4591 \times 0.5000}{0.4591 + 0.5000} \approx \mathbf{0.4787}$$
+
+---
+
+### 5.7.3 Group 3: Method-Specific Metrics
+- **Fuzzy Clustering Metrics**:
+  - **Fuzzy Partition Coefficient (FPC)**: $\frac{1}{n}\sum_{i=1}^n \sum_{j=1}^c u_{ij}^2 \in [1/c, 1]$ (higher indicates crisper boundaries).
+  - **Partition Entropy (PE)**: $-\frac{1}{n}\sum_{i=1}^n \sum_{j=1}^c u_{ij} \ln(u_{ij}) \in [0, \ln(c)]$ (lower indicates less fuzziness/uncertainty).
+- **Hierarchical Metrics**:
+  - **Cophenetic Correlation ($r$)**: Linear Pearson correlation between original pairwise distances and tree cophenetic distances ($r \to 1$ confirms dendrogram fidelity).
+- **DBSCAN Metrics**:
+  - **DBCV (Density-Based Cluster Validity)**: Weights cluster density separation by cluster size while penalizing noise points ($\in [-1, 1]$).
+  - **Noise Ratio**: $\frac{n_{\text{noise}}}{n_{\text{total}}}$.
+
+
+
+---
+
+# Topic 6: Optimization for Linear Models: Normal Equation & Gradient Descent
+
+## 6.1 Linear Regression Foundations & Vectorization
+
+Linear regression models the relationship between an input feature vector $\mathbf{x} \in \mathbb{R}^n$ and a scalar continuous target $y \in \mathbb{R}$ through a linear hypothesis function:
+
+$$\hat{y} = h_{\boldsymbol{\theta}}(\mathbf{x}) = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \dots + \theta_n x_n$$
+
+```mermaid
+flowchart LR
+    Features["Input Features x = [x₁, ..., xₙ]"] --> Hypo["Linear Model<br>h_θ(x) = θ₀ + ∑ θⱼxⱼ"]
+    Hypo --> Pred["Prediction ŷ"]
+```
+
+### 6.1.1 Geometric Representation
+- $n = 1$ feature: Represents a **straight line** in 2D space ($\hat{y} = \theta_0 + \theta_1 x$).
+- $n = 2$ features: Represents a **flat plane** in 3D space ($\hat{y} = \theta_0 + \theta_1 x_1 + \theta_2 x_2$).
+- $n > 2$ features: Represents an $(n)$-dimensional **hyperplane** in an $(n+1)$-dimensional space.
+
+### 6.1.2 Single-Sample Vectorized Hypothesis
+By defining a dummy intercept feature $x_0 = 1$, the hypothesis can be represented compactly as a vector dot product:
+
+$$\mathbf{x} = \begin{bmatrix} x_0 \\ x_1 \\ \vdots \\ x_n \end{bmatrix} = \begin{bmatrix} 1 \\ x_1 \\ \vdots \\ x_n \end{bmatrix}, \quad \boldsymbol{\theta} = \begin{bmatrix} \theta_0 \\ \theta_1 \\ \vdots \\ \theta_n \end{bmatrix}$$
+
+$$h_{\boldsymbol{\theta}}(\mathbf{x}) = \boldsymbol{\theta}^T \mathbf{x} = \begin{bmatrix} \theta_0 & \theta_1 & \dots & \theta_n \end{bmatrix} \begin{bmatrix} 1 \\ x_1 \\ \vdots \\ x_n \end{bmatrix} = \theta_0 + \sum_{j=1}^n \theta_j x_j$$
+
+> [!example] Single-Sample Calculation
+> Given $\mathbf{x} = [1, 2, 4]^T$ and $\boldsymbol{\theta} = [1.5, 2, 3]^T$:
+> $$h_{\boldsymbol{\theta}}(\mathbf{x}) = \boldsymbol{\theta}^T \mathbf{x} = 1.5(1) + 2(2) + 3(4) = 1.5 + 4 + 12 = 17.5$$
+
+### 6.1.3 Multiple-Sample Vectorized Hypothesis (Design Matrix)
+For a dataset containing $m$ training instances and $n$ features, the input is organized into a **Design Matrix** $\mathbf{X}$ of dimension $m \times (n+1)$:
+
+$$\mathbf{X} = \begin{bmatrix} x_0^{(1)} & x_1^{(1)} & \dots & x_n^{(1)} \\ x_0^{(2)} & x_1^{(2)} & \dots & x_n^{(2)} \\ \vdots & \vdots & \ddots & \vdots \\ x_0^{(m)} & x_1^{(m)} & \dots & x_n^{(m)} \end{bmatrix} = \begin{bmatrix} (\mathbf{x}^{(1)})^T \\ (\mathbf{x}^{(2)})^T \\ \vdots \\ (\mathbf{x}^{(m)})^T \end{bmatrix}, \quad \mathbf{h}_{\boldsymbol{\theta}}(\mathbf{X}) = \mathbf{X}\boldsymbol{\theta}$$
+
+$$\begin{bmatrix} \hat{y}^{(1)} \\ \hat{y}^{(2)} \\ \vdots \\ \hat{y}^{(m)} \end{bmatrix} = \mathbf{X}\boldsymbol{\theta}$$
+
+---
+
+## 6.2 The Cost Function: Mean Squared Error (MSE)
+
+To determine optimal weights $\boldsymbol{\theta}$, we define the Mean Squared Error (MSE) cost function:
+
+$$\text{MSE}(\mathbf{X}, h_{\boldsymbol{\theta}}) = J(\boldsymbol{\theta}) = \frac{1}{m}\sum_{i=1}^m \left(h_{\boldsymbol{\theta}}(\mathbf{x}^{(i)}) - y^{(i)}\right)^2 = \frac{1}{m}\sum_{i=1}^m \left(\boldsymbol{\theta}^T\mathbf{x}^{(i)} - y^{(i)}\right)^2$$
+
+### Vectorized MSE Formulation:
+$$J(\boldsymbol{\theta}) = \frac{1}{m} (\mathbf{X}\boldsymbol{\theta} - \mathbf{y})^T (\mathbf{X}\boldsymbol{\theta} - \mathbf{y})$$
+
+> [!note] Why Square the Residuals?
+> 1. Prevents positive and negative residual deviations from canceling each other out.
+> 2. Imposes a progressive quadratic penalty on large errors.
+> 3. Creates a continuous, globally convex, everywhere-differentiable parabolic optimization bowl.
+
+---
+
+## 6.3 Closed-Form Solution: The Normal Equation
+
+The Normal Equation provides an exact analytical solution for $\boldsymbol{\theta}$ that minimizes the MSE without requiring iterative gradient loops:
+
+$$\hat{\boldsymbol{\theta}} = \arg\min_{\boldsymbol{\theta}} J(\boldsymbol{\theta})$$
+
+Setting the partial derivatives $\nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) = \mathbf{0}$ yields the closed-form **Normal Equation**:
+
+$$\hat{\boldsymbol{\theta}} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$$
+
+```mermaid
+flowchart LR
+    X["Design Matrix X & Labels y"] --> XT["Compute XᵀX and Xᵀy"]
+    XT --> Inv["Invert Matrix: (XᵀX)⁻¹"]
+    Inv --> Sol["Multiply: θ̂ = (XᵀX)⁻¹ Xᵀy"]
+```
+
+### 6.3.1 Step-by-Step Manual Calculation of the Normal Equation
+Find the optimal line fitting 3 points: $(1, 0), (2, 1), (3, 2)$:
+
+1. **Construct $\mathbf{X}$ and $\mathbf{y}$**:
+   $$\mathbf{X} = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix}$$
+
+2. **Compute $\mathbf{X}^T \mathbf{X}$**:
+   $$\mathbf{X}^T \mathbf{X} = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{bmatrix} \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix} = \begin{bmatrix} 1+1+1 & 1+2+3 \\ 1+2+3 & 1^2+2^2+3^2 \end{bmatrix} = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}$$
+
+3. **Compute $\mathbf{X}^T \mathbf{y}$**:
+   $$\mathbf{X}^T \mathbf{y} = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{bmatrix} \begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix} = \begin{bmatrix} 0 + 1 + 2 \\ 0 + 2 + 6 \end{bmatrix} = \begin{bmatrix} 3 \\ 8 \end{bmatrix}$$
+
+4. **Invert Matrix $(\mathbf{X}^T \mathbf{X})$**:
+   $$\det(\mathbf{X}^T \mathbf{X}) = (3)(14) - (6)(6) = 42 - 36 = 6$$
+   $$(\mathbf{X}^T \mathbf{X})^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}$$
+
+5. **Compute $\hat{\boldsymbol{\theta}}$**:
+   $$\hat{\boldsymbol{\theta}} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 3 \\ 8 \end{bmatrix} = \frac{1}{6} \begin{bmatrix} 14(3) + (-6)(8) \\ -6(3) + 3(8) \end{bmatrix} = \frac{1}{6} \begin{bmatrix} 42 - 48 \\ -18 + 24 \end{bmatrix} = \frac{1}{6} \begin{bmatrix} -6 \\ 6 \end{bmatrix} = \begin{bmatrix} -1 \\ 1 \end{bmatrix}$$
+
+$$\hat{y} = h_{\boldsymbol{\theta}}(x) = -1 + 1x = x - 1$$
+- Intercept $\theta_0 = -1$, Slope $\theta_1 = 1$.
+
+### 6.3.2 Normal Equation: Strengths vs. Weaknesses
+- **Strengths**:
+  - One-shot closed-form solution: no hyperparameter tuning (no learning rate $\eta$ or iteration count).
+  - Scalability with samples: $O(m)$ linear with respect to the number of instances $m$.
+- **Weaknesses**:
+  - **Inversion Computational Complexity**: Matrix inversion of $(\mathbf{X}^T\mathbf{X})$ scales at $O(n^{2.4})$ to $O(n^3)$ with respect to feature count $n$. If $n$ doubles, compute time increases approximately $8\times$. Prohibitive when $n > 10,000$.
+  - **Non-Invertibility (Singular Matrix)**: $(\mathbf{X}^T\mathbf{X})$ cannot be inverted if:
+    1. Features are collinear / linearly dependent (e.g., floor area in sq ft and sq meters).
+    2. Number of features exceeds samples ($n > m$).
+    3. Redundant or duplicate observations exist.
+
+---
+
+## 6.4 Iterative Optimization: Gradient Descent
+
+When feature dimensionality $n$ is very large or memory cannot accommodate full matrix products, **Gradient Descent (GD)** provides a scalable alternative.
+
+```mermaid
+flowchart TD
+    Init["Initialize θ randomly"] --> Grad["Compute Gradient: ∇ J(θ)"]
+    Grad --> Update["Update Weights: θ := θ - η ∇ J(θ)"]
+    Update --> Check{"Convergence<br>Criteria Met?"}
+    Check -- No --> Grad
+    Check -- Yes --> Stop["Optimal Parameter Vector θ*"]
+```
+
+### 6.4.1 Fundamental Update Equation
+$$\boldsymbol{\theta} := \boldsymbol{\theta} - \eta \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta})$$
+where:
+- $\eta$ (eta) = Learning rate (step size hyperparameter).
+- $\nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta})$ = Gradient vector of partial derivatives pointing in the direction of steepest ascent. Subtracting the gradient forces parameters downward along the steepest descent path.
+
+### 6.4.2 Learning Rate Dynamics
+- **$\eta$ Too Small**: Parameter steps are tiny. Optimization requires thousands of iterations, creating unacceptably slow convergence.
+- **$\eta$ Just Right**: Loss function decreases smoothly and monotonically, settling cleanly at the global minimum.
+- **$\eta$ Too Large**: Updates overshoot the minimum, bouncing back and forth across the valley walls (the **Ping-Pong Effect**) or diverging entirely ($\text{Loss} \to \infty$).
+
+---
+
+## 6.5 Stopping Criteria for Iterative Optimization
+
+Iterative descent loops terminate when one of three standard conditions is triggered:
+1. **Maximum Iterations**: Terminates when a preset upper bound is reached (e.g., `epochs = 1,000`).
+2. **Loss Improvement Absolute Tolerance**: Terminates when change in loss drops below threshold $\epsilon$:
+   $$\left|J^{(t-1)} - J^{(t)}\right| < \epsilon$$
+3. **Gradient Vector $L_2$ Norm**: Terminates when the Euclidean norm of the gradient vector is near zero:
+   $$\|\nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta})\|_2 = \sqrt{\sum_{j=0}^n \left(\frac{\partial J}{\partial \theta_j}\right)^2} < \tau$$
+
+---
+
+## 6.6 The Three Variants of Gradient Descent
+
+```mermaid
+flowchart TD
+    GD["Gradient Descent Taxonomy"]
+    GD --> BGD["1. Batch Gradient Descent (BGD)<br>• Uses ALL m samples per step<br>• Monotonic & exact gradient<br>• Slow on massive data"]
+    GD --> SGD["2. Stochastic Gradient Descent (SGD)<br>• Uses ONE random sample per step<br>• Ultra-fast & low memory<br>• Erratic path; escapes local minima"]
+    GD --> MBGD["3. Mini-Batch Gradient Descent (MGD)<br>• Uses small batch (e.g., 32–256)<br>• GPU vectorization enabled<br>• Standard industry practice"]
+```
+
+### 6.6.1 Batch Gradient Descent (BGD)
+Computes the true gradient across all $m$ training instances for every single weight update:
+$$\nabla_{\boldsymbol{\theta}} \text{MSE}(\boldsymbol{\theta}) = \frac{2}{m} \mathbf{X}^T (\mathbf{X}\boldsymbol{\theta} - \mathbf{y})$$
+$$\boldsymbol{\theta} := \boldsymbol{\theta} - \eta \frac{2}{m} \mathbf{X}^T (\mathbf{X}\boldsymbol{\theta} - \mathbf{y})$$
+
+#### Worked Step-by-Step BGD Update
+Given $\mathbf{X} = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \mathbf{y} = \begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix}$, initial $\boldsymbol{\theta} = \begin{bmatrix} 1.0 \\ 0.5 \end{bmatrix}$, $\eta = 0.03$, $m = 3$:
+1. **Predictions**:
+   $$\mathbf{X}\boldsymbol{\theta} = \begin{bmatrix} 1(1) + 1(0.5) \\ 1(1) + 2(0.5) \\ 1(1) + 3(0.5) \end{bmatrix} = \begin{bmatrix} 1.5 \\ 2.0 \\ 2.5 \end{bmatrix}$$
+2. **Residual Vector $\mathbf{e} = \mathbf{X}\boldsymbol{\theta} - \mathbf{y}$**:
+   $$\mathbf{e} = \begin{bmatrix} 1.5 - 0 \\ 2.0 - 1 \\ 2.5 - 2 \end{bmatrix} = \begin{bmatrix} 1.5 \\ 1.0 \\ 0.5 \end{bmatrix}$$
+3. **Gradient Vector**:
+   $$\mathbf{X}^T\mathbf{e} = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{bmatrix} \begin{bmatrix} 1.5 \\ 1.0 \\ 0.5 \end{bmatrix} = \begin{bmatrix} 1.5 + 1.0 + 0.5 \\ 1.5(1) + 1.0(2) + 0.5(3) \end{bmatrix} = \begin{bmatrix} 3.0 \\ 5.0 \end{bmatrix}$$
+   $$\nabla_{\boldsymbol{\theta}} \text{MSE} = \frac{2}{3} \begin{bmatrix} 3.0 \\ 5.0 \end{bmatrix} = \begin{bmatrix} 2.000 \\ 3.333 \end{bmatrix}$$
+4. **Update Parameters**:
+   $$\boldsymbol{\theta}_{\text{new}} = \begin{bmatrix} 1.0 \\ 0.5 \end{bmatrix} - 0.03 \begin{bmatrix} 2.000 \\ 3.333 \end{bmatrix} = \begin{bmatrix} 1.0 - 0.060 \\ 0.5 - 0.09999 \end{bmatrix} = \begin{bmatrix} 0.940 \\ 0.400 \end{bmatrix}$$
+
+---
+
+### 6.6.2 Stochastic Gradient Descent (SGD)
+Selects a single observation $(\mathbf{x}_i, y_i)$ at random per step and updates parameters immediately:
+$$\boldsymbol{\theta} := \boldsymbol{\theta} - \eta \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}; \mathbf{x}_i, y_i)$$
+
+> [!important] Simulated Annealing & Learning Rate Schedules
+> Because individual samples introduce stochastic noise, SGD never settles perfectly at the minimum with a fixed $\eta$. Practitioners employ a **learning schedule** (gradually decreasing $\eta$ over time) to allow initial aggressive space exploration followed by fine-grained convergence.
+
+---
+
+### 6.6.3 Mini-Batch Gradient Descent (MBGD)
+Evaluates a small random subset (mini-batch) of $B$ samples ($16 \le B \le 512$):
+$$\boldsymbol{\theta} := \boldsymbol{\theta} - \frac{\eta}{B}\sum_{i=1}^B \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}; \mathbf{x}_i, y_i)$$
+
+#### Worked Step-by-Step Mini-Batch Example ($B = 2$)
+Given mini-batch samples: $(x_1, y_1) = (1, 5)$ and $(x_2, y_2) = (2, 7)$ with starting $\boldsymbol{\theta} = [2, 1]^T$ and $\eta = 0.1$:
+- $h(x_1) = 2 + 1(1) = 3 \implies e_1 = 3 - 5 = -2 \implies \mathbf{g}_1 = \begin{bmatrix} e_1 \\ e_1 x_1 \end{bmatrix} = \begin{bmatrix} -2 \\ -2 \end{bmatrix}$
+- $h(x_2) = 2 + 1(2) = 4 \implies e_2 = 4 - 7 = -3 \implies \mathbf{g}_2 = \begin{bmatrix} e_2 \\ e_2 x_2 \end{bmatrix} = \begin{bmatrix} -3 \\ -6 \end{bmatrix}$
+- **Average Gradient**:
+  $$\bar{\mathbf{g}} = \frac{1}{2} \left( \begin{bmatrix} -2 \\ -2 \end{bmatrix} + \begin{bmatrix} -3 \\ -6 \end{bmatrix} \right) = \frac{1}{2} \begin{bmatrix} -5 \\ -8 \end{bmatrix} = \begin{bmatrix} -2.5 \\ -4.0 \end{bmatrix}$$
+- **Update Parameters**:
+  $$\theta_0 := 2 - 0.1(-2.5) = 2 + 0.25 = 2.25$$
+  $$\theta_1 := 1 - 0.1(-4.0) = 1 + 0.40 = 1.40$$
+  $$\boldsymbol{\theta}_{\text{updated}} = \begin{bmatrix} 2.25 \\ 1.40 \end{bmatrix}$$
+- **Loss Improvement**: Batch MSE drops from $3.25 \to 1.406$.
+
+---
+
+## 6.7 Comparison of Optimization Algorithms
+
+| Dimension | Normal Equation | Batch Gradient Descent | Stochastic GD (SGD) | Mini-Batch GD (MBGD) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Step Mechanism** | Closed-form analytic matrix inversion | Full dataset per update | 1 sample per update | Small batch ($B \approx 32-128$) |
+| **Complexity per Step** | $O(n^3)$ (one solve) | $O(m \cdot n)$ | $O(n)$ | $O(B \cdot n)$ |
+| **Scalability to Large $m$** | Good ($O(m)$) | Poor (slow per epoch) | Excellent (online/streaming) | Excellent |
+| **Scalability to Large $n$** | Poor (fails when $n > 10^4$) | Excellent ($O(n)$) | Excellent ($O(n)$) | Excellent ($O(n)$) |
+| **Hyperparameter Tuning** | None ($\eta$ not needed) | Requires tuning $\eta$ | Requires tuning $\eta$ schedule | Requires tuning $\eta$ and $B$ |
+| **Convergence Path** | Direct exact minimum | Smooth, monotonic descent | Noisy, erratic walk | Balanced, semi-smooth path |
+| **Hardware Acceleration** | CPU matrix libraries | Moderate | Poor (scalar overhead) | Ideal for GPU/SIMD vectorization |
+
