@@ -1988,3 +1988,469 @@ Given mini-batch samples: $(x_1, y_1) = (1, 5)$ and $(x_2, y_2) = (2, 7)$ with s
 | **Convergence Path** | Direct exact minimum | Smooth, monotonic descent | Noisy, erratic walk | Balanced, semi-smooth path |
 | **Hardware Acceleration** | CPU matrix libraries | Moderate | Poor (scalar overhead) | Ideal for GPU/SIMD vectorization |
 
+
+
+---
+
+# Topic 7: Polynomial Regression & Regularization Techniques
+
+## 7.1 Polynomial Regression: Modeling Non-Linear Relationships
+
+Standard linear regression assumes a strictly monotonic planar relationship between inputs and targets. When underlying data manifolds exhibit curvature, a simple linear model suffers from severe underfitting (high bias).
+
+```mermaid
+flowchart LR
+    Underfit["Underfitting Line<br>h_θ(x) = θ₀ + θ₁x<br>(High Bias)"] --> Expand["Feature Expansion<br>φ(x) = [1, x, x², ..., xᵖ]"]
+    Expand --> Poly["Fitted Polynomial<br>h_θ(x) = θ₀ + ∑ θⱼxʲ<br>(Captures Curvature)"]
+```
+
+> [!info] The Core Insight of Polynomial Regression
+> Polynomial regression creates non-linear combinations of features while keeping the mathematical hypothesis **strictly linear in the parameter weights $\boldsymbol{\theta}$**:
+> $$h_{\boldsymbol{\theta}}(x) = \theta_0 + \theta_1 x + \theta_2 x^2 + \theta_3 x^3 + \dots + \theta_p x^p = \boldsymbol{\theta}^T \phi(x)$$
+> Because the equation remains linear in $\boldsymbol{\theta}$, all closed-form solutions (Normal Equation) and gradient optimization algorithms developed for standard linear regression apply directly without modification.
+
+### 7.1.1 Degree $p$ and Representation Trade-offs
+- **$p = 1$**: Standard straight line (fails to capture non-linear bends).
+- **$p = 2$**: Quadratic parabola (single extremum/turning point).
+- **$p = 3$**: Cubic curve (inflection point, S-curves).
+- **$p \gg 3$**: High-degree polynomials introduce extreme flexibility, oscillating wildly between data points (Runge's phenomenon) and memorizing sample noise.
+
+| Attribute | Strengths | Vulnerabilities |
+| :--- | :--- | :--- |
+| **Polynomial Modeling** | • Models non-linear patterns within standard linear regression framework.<br>• Directly tunable degree $p$. | • Highly vulnerable to extreme outliers in higher-order terms.<br>• Severe risk of overfitting as degree $p$ increases.<br>• Unscaled features cause numerical explosion (e.g., $x = 100 \implies x^4 = 10^8$). |
+
+---
+
+## 7.2 Diagnosing Underfitting and Overfitting
+
+Diagnosing model complexity requires analyzing the simultaneous behavior of **Training Error** and **Validation Error**:
+
+```mermaid
+flowchart TD
+    Diag["Model Complexity Diagnostics"]
+    Diag --> Under["High Bias (Underfitting)<br>• High Train Error<br>• High Val Error<br>• Small Gap between curves"]
+    Diag --> Opt["Optimal Capacity (Good Fit)<br>• Low Train Error<br>• Minimum Validation Error"]
+    Diag --> Over["High Variance (Overfitting)<br>• Low Train Error<br>• High Val Error<br>• Massive Generalization Gap"]
+```
+
+| Diagnostic Metric | High Bias (Underfitting) | Optimal Fit | High Variance (Overfitting) |
+| :--- | :--- | :--- | :--- |
+| **Training Error** | High | Low | Extremely Low / Near Zero |
+| **Validation Error** | High | Low (Global Minimum) | High |
+| **Train-Validation Gap** | Small | Small | Large |
+| **Effect of Adding Data** | **Does not help** (model lacks capacity) | Marginally improves | **Significantly helps** (closes the gap) |
+| **Remediation Strategy** | • Add polynomial terms ($x^2, x^3$).<br>• Add new informative domain features.<br>• Increase model capacity / tree depth. | Ready for production validation. | • Reduce polynomial degree $p$.<br>• Collect more training samples.<br>• Apply feature selection.<br>• **Apply Regularization (Ridge / Lasso)**. |
+
+---
+
+## 7.3 Regularization Foundations
+
+> [!info] The Principle of Regularization
+> Regularization deliberately introduces a controlled amount of bias to constrain model complexity, achieving a substantial reduction in generalization variance:
+> $$J(\boldsymbol{\theta}) = \text{MSE}(\boldsymbol{\theta}) + \text{Penalty}(\boldsymbol{\theta})$$
+> By penalizing excessively large parameter weights $\theta_j$, regularization flattens steep polynomial oscillations and yields smoother hypothesis functions.
+
+### The Regularization Strength Hyperparameter $\alpha$
+- **$\alpha = 0$**: No regularization penalty (pure Ordinary Least Squares; high risk of overfitting).
+- **$\alpha$ Optimal**: Balances empirical data fit and model simplicity; minimizes validation error.
+- **$\alpha \to \infty$**: Penalty dominates; shrinks all non-bias weights to zero ($\hat{y} \approx \theta_0 = \bar{y}$), causing severe underfitting.
+- **Intercept Invariance Rule**: The bias term $\theta_0$ is **never regularized**, ensuring the baseline mean level of the target remains unconstrained.
+
+---
+
+## 7.4 Ridge Regression ($L_2$ Regularization)
+
+Ridge regression adds an $L_2$-norm penalty proportional to the sum of squared coefficients:
+
+$$J_{\text{Ridge}}(\boldsymbol{\theta}) = \text{MSE}(\boldsymbol{\theta}) + \frac{\alpha}{2}\sum_{j=1}^n \theta_j^2 = \frac{1}{m}(\mathbf{X}\boldsymbol{\theta} - \mathbf{y})^T(\mathbf{X}\boldsymbol{\theta} - \mathbf{y}) + \frac{\alpha}{2}\boldsymbol{\theta}_{1:n}^T \boldsymbol{\theta}_{1:n}$$
+
+### 7.4.1 Regularized Closed-Form Solution
+$$\hat{\boldsymbol{\theta}}_{\text{Ridge}} = (\mathbf{X}^T \mathbf{X} + \alpha \mathbf{A})^{-1} \mathbf{X}^T \mathbf{y}$$
+where $\mathbf{A}$ is an $(n+1) \times (n+1)$ diagonal matrix with a zero at index $(0, 0)$ to protect the intercept $\theta_0$:
+$$\mathbf{A} = \begin{bmatrix} 0 & 0 & \dots & 0 \\ 0 & 1 & \dots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \dots & 1 \end{bmatrix}$$
+
+> [!tip] Mathematical Advantage: Invertibility Guarantee
+> In standard linear regression, $(\mathbf{X}^T\mathbf{X})$ is non-invertible whenever features are collinear or $n > m$. Adding the positive diagonal matrix $\alpha \mathbf{A}$ guarantees that $(\mathbf{X}^T\mathbf{X} + \alpha\mathbf{A})$ is **strictly positive definite and always invertible**.
+
+### 7.4.2 Step-by-Step Ridge Normal Equation Calculation
+Given $m = 3$ samples: $\mathbf{X} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 1 & 2 \end{bmatrix}$, $\mathbf{y} = \begin{bmatrix} 0.5 \\ 2.0 \\ 2.5 \end{bmatrix}$, $\alpha = 0.1$, $\mathbf{A} = \begin{bmatrix} 0 & 0 \\ 0 & 1 \end{bmatrix}$:
+
+1. **Compute $\mathbf{X}^T \mathbf{X}$ and $\mathbf{X}^T \mathbf{y}$**:
+   $$\mathbf{X}^T\mathbf{X} = \begin{bmatrix} 1 & 1 & 1 \\ 0 & 1 & 2 \end{bmatrix} \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 1 & 2 \end{bmatrix} = \begin{bmatrix} 3 & 3 \\ 3 & 5 \end{bmatrix}$$
+   $$\mathbf{X}^T\mathbf{y} = \begin{bmatrix} 1 & 1 & 1 \\ 0 & 1 & 2 \end{bmatrix} \begin{bmatrix} 0.5 \\ 2.0 \\ 2.5 \end{bmatrix} = \begin{bmatrix} 0.5 + 2.0 + 2.5 \\ 0(0.5) + 1(2.0) + 2(2.5) \end{bmatrix} = \begin{bmatrix} 5.0 \\ 7.0 \end{bmatrix}$$
+
+2. **Form Matrix $\mathbf{B} = \mathbf{X}^T\mathbf{X} + \alpha\mathbf{A}$**:
+   $$\mathbf{B} = \begin{bmatrix} 3 & 3 \\ 3 & 5 \end{bmatrix} + 0.1 \begin{bmatrix} 0 & 0 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 3 & 3 \\ 3 & 5.1 \end{bmatrix}$$
+
+3. **Invert Matrix $\mathbf{B}$**:
+   $$\det(\mathbf{B}) = (3)(5.1) - (3)(3) = 15.3 - 9.0 = 6.3$$
+   $$\mathbf{B}^{-1} = \frac{1}{6.3} \begin{bmatrix} 5.1 & -3.0 \\ -3.0 & 3.0 \end{bmatrix}$$
+
+4. **Solve for Regularized Parameter Vector $\hat{\boldsymbol{\theta}}$**:
+   $$\hat{\boldsymbol{\theta}} = \frac{1}{6.3} \begin{bmatrix} 5.1 & -3.0 \\ -3.0 & 3.0 \end{bmatrix} \begin{bmatrix} 5.0 \\ 7.0 \end{bmatrix} = \frac{1}{6.3} \begin{bmatrix} 5.1(5) - 3(7) \\ -3(5) + 3(7) \end{bmatrix} = \frac{1}{6.3} \begin{bmatrix} 25.5 - 21.0 \\ -15.0 + 21.0 \end{bmatrix} = \frac{1}{6.3} \begin{bmatrix} 4.5 \\ 6.0 \end{bmatrix} = \begin{bmatrix} 0.714 \\ 0.952 \end{bmatrix}$$
+
+$$\hat{y} = 0.714 + 0.952x$$
+
+---
+
+## 7.5 Lasso Regression ($L_1$ Regularization)
+
+Lasso (Least Absolute Shrinkage and Selection Operator) imposes an $L_1$-norm penalty proportional to the sum of absolute coefficients:
+
+$$J_{\text{Lasso}}(\boldsymbol{\theta}) = \text{MSE}(\boldsymbol{\theta}) + \alpha \sum_{j=1}^n |\theta_j|$$
+
+```mermaid
+flowchart LR
+    Lasso["Lasso Regularization (L1)"] --> Sharp["Diamond-shaped L1 Constraint"]
+    Sharp --> Sparse["Forces non-informative θ_j strictly to 0"]
+    Sparse --> Select["Performs Embedded Feature Selection"]
+```
+
+### 7.5.1 Distinctive Properties of Lasso
+1. **Sparsity & Automatic Feature Selection**: Due to the sharp corners of the $L_1$ diamond constraint, the optimal cost contour frequently touches vertices on the axes, forcing less informative features to have weights of **exactly zero**.
+2. **Interpretability**: Produces compact sparse models containing only the most influential subset of predictors.
+3. **Limitation with Correlated Features**: When multiple predictors are strongly correlated, Lasso arbitrarily retains one and drives the others to zero, which can lead to unstable model interpretation across resampled folds.
+
+---
+
+## 7.6 Elastic Net (Combined $L_1 + L_2$ Regularization)
+
+Elastic Net blends the properties of Ridge and Lasso through a convex combination of $L_1$ and $L_2$ penalties:
+
+$$J_{\text{ElasticNet}}(\boldsymbol{\theta}) = \text{MSE}(\boldsymbol{\theta}) + r \alpha \sum_{j=1}^n |\theta_j| + (1 - r)\frac{\alpha}{2}\sum_{j=1}^n \theta_j^2$$
+
+where:
+- $\alpha \ge 0$: Overall regularization intensity.
+- $r \in [0, 1]$: Mixing ratio ($L_1$ ratio).
+  - $r = 1$: Equivalent to pure **Lasso Regression**.
+  - $r = 0$: Equivalent to pure **Ridge Regression**.
+  - $0 < r < 1$: Enforces feature sparsity while maintaining grouping stability among correlated predictor clusters.
+
+### 7.6.1 Step-by-Step Elastic Net Cost Calculation
+Given: $\mathbf{X} = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \mathbf{y} = \begin{bmatrix} 1 \\ 2 \\ 2 \end{bmatrix}$, parameters $\boldsymbol{\theta} = [0.5, -1.2]^T$, $\alpha = 0.3$, $r = 0.6$:
+
+1. **Compute Predictions & Residuals**:
+   $$\mathbf{X}\boldsymbol{\theta} = \begin{bmatrix} 0.5 - 1.2(1) \\ 0.5 - 1.2(2) \\ 0.5 - 1.2(3) \end{bmatrix} = \begin{bmatrix} -0.7 \\ -1.9 \\ -3.1 \end{bmatrix}$$
+   $$\mathbf{e} = \begin{bmatrix} -0.7 - 1 \\ -1.9 - 2 \\ -3.1 - 2 \end{bmatrix} = \begin{bmatrix} -1.7 \\ -3.9 \\ -5.1 \end{bmatrix}$$
+
+2. **Compute Base MSE**:
+   $$\mathbf{e}^T\mathbf{e} = (-1.7)^2 + (-3.9)^2 + (-5.1)^2 = 2.89 + 15.21 + 26.01 = 44.11$$
+   $$\text{MSE} = \frac{44.11}{3} = 14.7033$$
+
+3. **Compute $L_1$ Penalty Component**:
+   $$\sum |\theta_j| = |0.5| + |-1.2| = 1.70$$
+   $$\text{Penalty}_{L_1} = r \alpha \sum |\theta_j| = (0.6)(0.3)(1.70) = 0.3060$$
+
+4. **Compute $L_2$ Penalty Component**:
+   $$\sum \theta_j^2 = (0.5)^2 + (-1.2)^2 = 0.25 + 1.44 = 1.69$$
+   $$\text{Penalty}_{L_2} = (1 - r)\frac{\alpha}{2}\sum \theta_j^2 = (0.4)\left(\frac{0.3}{2}\right)(1.69) = (0.4)(0.15)(1.69) = 0.1014$$
+
+5. **Total Elastic Net Objective Cost**:
+   $$J(\boldsymbol{\theta}) = 14.7033 + 0.3060 + 0.1014 = 15.1107$$
+
+---
+
+## 7.7 Comprehensive Regularization Comparison
+
+| Feature | Ordinary Least Squares (OLS) | Ridge ($L_2$) | Lasso ($L_1$) | Elastic Net ($L_1 + L_2$) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Penalty Term** | None | $\frac{\alpha}{2}\sum \theta_j^2$ | $\alpha \sum \|\theta_j\|$ | $r\alpha \sum \|\theta_j\| + (1-r)\frac{\alpha}{2}\sum \theta_j^2$ |
+| **Coefficient Behavior** | Unconstrained weights | Shrinks asymptotically toward zero | Shrinks uninformative weights strictly to zero | Shrinks weights; selects groups of correlated features |
+| **Output Model** | Dense (all features) | Dense (all features) | **Sparse** (automatic feature selection) | **Sparse** (controlled sparsity) |
+| **Analytical Solution** | Yes: $(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{y}$ | Yes: $(\mathbf{X}^T\mathbf{X} + \alpha\mathbf{A})^{-1}\mathbf{X}^T\mathbf{y}$ | No (requires sub-gradient or coordinate descent) | No (coordinate descent) |
+| **Handling Collinearity** | Unstable (singular $\mathbf{X}^T\mathbf{X}$) | Stable (regularization guarantees invertibility) | Arbitrarily picks one feature | Highly robust (groups correlated features together) |
+| **Recommended Use Case** | Small $n$, linear relationships, no collinearity | Many predictors with small distributed effects | When only a small fraction of features are true signals | Default choice when feature correlations are suspected |
+
+
+
+---
+
+# Topic 8: Classical & Heuristic Search Algorithms
+
+## 8.1 Formulation of Search Problems
+
+In artificial intelligence, problem solving by search is the process of navigating through a combinatorial configuration space to find an optimal sequence of actions that achieves a defined goal.
+
+```mermaid
+flowchart LR
+    Start["Start State (s₀)"] --> Act["Sequence of Actions<br>a₁, a₂, ..., aₖ"]
+    Act --> Trans["Transition Model<br>Result(s, a)"]
+    Trans --> Goal{"Goal Test<br>Satisfied?"}
+    Goal -- Yes --> Sol["Solution Path<br>Total Path Cost: ∑ c(s, a, s')"]
+```
+
+### 8.1.1 Five Formal Components of a Search Problem
+1. **State Space ($S$)**: The set of all possible configurations or world states.
+2. **Initial / Start State ($s_0$)**: The specific state where the agent begins exploration.
+3. **Actions & Successor Function ($T(s, a) \to s'$)**: The set of legal moves available in state $s$, the resulting successor states $s'$, and step costs $c(s, a, s')$.
+4. **Goal Test ($G(s) \to \{\text{True}, \text{False}\}$)**: A boolean predicate identifying whether a given state satisfies the termination conditions.
+5. **Path Cost ($g(n)$)**: A numerical function summing the individual step costs along a trajectory:
+   $$g(n) = \sum_{t=1}^k c(s_{t-1}, a_t, s_t)$$
+
+---
+
+### 8.1.2 Canonical Case Study: The River Crossing Problem
+
+**Challenge**: A farmer must transport a Wolf ($W$), a Goat ($G$), and a Cabbage ($C$) across a river using a boat that can carry only the Man ($M$) and at most one item. The goat will eat the cabbage, and the wolf will eat the goat if left unattended without the man.
+
+- **State Notation**: `{Left Bank Occupants} || {Right Bank Occupants}`
+- **Start State**: `MCGW ||`
+- **Goal State**: `|| MCGW`
+- **Safety Constraint**: If $M$ is absent from a bank, $(G, C)$ and $(W, G)$ cannot be present together.
+  - *Valid states*: `CW || MG`, `MCW || G`, `C || MGW`, `MGW || C`.
+  - *Invalid states*: `CGW || M` (goat eats cabbage), `GW || MC` (wolf eats goat).
+
+#### Optimal 7-Step Solution Trajectory:
+1. `MCGW ||` $\xrightarrow{MG>}$ `CW || MG` (Man takes Goat across)
+2. `CW || MG` $\xrightarrow{M<}$ `MCW || G` (Man returns alone)
+3. `MCW || G` $\xrightarrow{MW>}$ `C || MGW` (Man takes Wolf across)
+4. `C || MGW` $\xrightarrow{MG<}$ `MCG || W` (Man brings Goat back to prevent conflict)
+5. `MCG || W` $\xrightarrow{MC>}$ `G || MCW` (Man takes Cabbage across)
+6. `G || MCW` $\xrightarrow{M<}$ `MG || CW` (Man returns alone)
+7. `MG || CW` $\xrightarrow{MG>}$ `|| MCGW` (Man takes Goat across; **Goal Achieved in 7 trips**)
+
+---
+
+## 8.2 General Search Architecture & Frontier Management
+
+A search algorithm superimposes a dynamic **Search Tree** over the underlying **State-Space Graph**.
+
+```mermaid
+flowchart TD
+    Init["Initialize Frontier with Start State s₀"] --> Empty{"Frontier<br>Empty?"}
+    Empty -- Yes --> Fail["Return Failure"]
+    Empty -- No --> Select["Select & Remove Node n from Frontier<br>(Strategy-Specific Priority)"]
+    Select --> Goal{"Is n a<br>Goal State?"}
+    Goal -- Yes --> Success["Return Solution Path & Cost"]
+    Goal -- No --> Expand["Expand Node n<br>Generate Legal Children"]
+    Expand --> Add["Insert Successors into Frontier"]
+    Add --> Empty
+```
+
+- **Frontier (Open List)**: A collection maintaining all candidate leaf nodes that have been generated but not yet expanded.
+- **Explored Set (Closed List)**: A collection tracking all states that have already been evaluated and expanded to prevent infinite loops in cyclic graphs.
+- **Core Distinction**: Algorithms differ almost exclusively by **how they prioritize and select the next node from the frontier**.
+
+### Four Dimensions of Search Algorithm Evaluation
+1. **Completeness**: Is the algorithm guaranteed to find a valid solution if one exists?
+2. **Optimality**: Does the algorithm guarantee finding the lowest-cost solution path?
+3. **Time Complexity**: How many nodes are generated/evaluated before reaching the goal?
+4. **Space Complexity**: What is the maximum number of nodes stored concurrently in memory?
+
+---
+
+## 8.3 Uninformed (Blind) Search Strategies
+
+Uninformed search algorithms possess no problem-specific domain knowledge regarding how close a given state is to the destination. They evaluate nodes strictly based on graph topology or accumulated path cost.
+
+```mermaid
+flowchart TD
+    Uninformed["Uninformed Search Strategies"]
+    Uninformed --> BFS["Breadth-First Search (BFS)<br>• Frontier: Queue (FIFO)<br>• Level-by-level exploration<br>• Complete; Optimal for uniform costs"]
+    Uninformed --> DFS["Depth-First Search (DFS)<br>• Frontier: Stack (LIFO)<br>• Deep-branch exploration<br>• Linear memory; Incomplete for infinite trees"]
+    Uninformed --> UCS["Uniform-Cost Search (UCS)<br>• Frontier: Priority Queue (min-heap)<br>• Expands lowest g(n)<br>• Complete & Optimal for positive costs"]
+```
+
+---
+
+### 8.3.1 Benchmark Graph for Search Tracing
+To illustrate BFS, DFS, and UCS, consider the directed graph from Start $S$ to Goal $G$:
+- Directed Edges & Step Costs:
+  - $S \to A$ (cost 1), $S \to B$ (cost 2), $S \to C$ (cost 5)
+  - $A \to B$ (cost 2), $A \to C$ (cost 3)
+  - $B \to C$ (cost 1)
+  - $C \to G$ (cost 1)
+- True Optimal Path: $S \to B \to C \to G$ with total path cost $2 + 1 + 1 = \mathbf{4}$.
+
+---
+
+### 8.3.2 Breadth-First Search (BFS)
+- **Frontier Implementation**: First-In-First-Out (FIFO) **Queue**.
+- **Expansion Logic**: Explores all depth-$d$ nodes before considering any depth-$(d+1)$ nodes.
+- **Goal Test Timing**: Applied when nodes are selected from the queue (or generated).
+
+#### Step-by-Step BFS Trace on Benchmark Graph (Alphabetical tie-breaking):
+1. **Initialize**: $\text{Queue} = [S]$. Select $S$.
+2. **Expand $S$**: Enqueue children $A_1, B_1, C_1$. $\text{Queue} = [A_1, B_1, C_1]$. Select $A_1$.
+3. **Expand $A_1$**: Enqueue $B_2, C_2$. $\text{Queue} = [B_1, C_1, B_2, C_2]$. Select $B_1$.
+4. **Expand $B_1$**: Enqueue $C_3$. $\text{Queue} = [C_1, B_2, C_2, C_3]$. Select $C_1$.
+5. **Expand $C_1$**: Enqueue $G_1$. $\text{Queue} = [B_2, C_2, C_3, G_1]$. Select $B_2$.
+6. **Expand $B_2$**: Enqueue $C_4$. $\text{Queue} = [C_2, C_3, G_1, C_4]$. Select $C_2$.
+7. **Expand $C_2$**: Enqueue $G_2$. $\text{Queue} = [C_3, G_1, C_4, G_2]$. Select $C_3$.
+8. **Expand $C_3$**: Enqueue $G_3$. $\text{Queue} = [G_1, C_4, G_2, G_3]$. Select $G_1$ (Goal!).
+
+- **Returned Path**: $S \to C \to G$
+- **Returned Cost**: $5 + 1 = \mathbf{6}$ (**Suboptimal!** BFS minimizes step count / depth, not general weighted cost).
+- **Nodes Expanded**: $8$, **Max Frontier Size**: $4$.
+
+---
+
+### 8.3.3 Depth-First Search (DFS)
+- **Frontier Implementation**: Last-In-First-Out (LIFO) **Stack**.
+- **Expansion Logic**: Immediately pursues the deepest unexpanded child before backtracking.
+
+#### Step-by-Step DFS Trace on Benchmark Graph:
+1. **Initialize**: $\text{Stack} = [S]$. Pop $S$.
+2. **Expand $S$**: Push $C_1, B_1, A_1$ (top of stack is $A_1$). $\text{Stack} = [A_1, B_1, C_1]$. Pop $A_1$.
+3. **Expand $A_1$**: Push $C_2, B_2$ ($B_2$ on top). $\text{Stack} = [B_2, C_2, B_1, C_1]$. Pop $B_2$.
+4. **Expand $B_2$**: Push $C_3$. $\text{Stack} = [C_3, C_2, B_1, C_1]$. Pop $C_3$.
+5. **Expand $C_3$**: Push $G_1$. $\text{Stack} = [G_1, C_2, B_1, C_1]$. Pop $G_1$ (Goal!).
+
+- **Returned Path**: $S \to A \to B \to C \to G$
+- **Returned Cost**: $1 + 2 + 1 + 1 = \mathbf{5}$ (**Suboptimal**).
+- **Nodes Expanded**: $5$, **Max Frontier Size**: $4$.
+- **Key Advantage**: Minimal linear memory consumption $O(b \cdot m)$.
+
+---
+
+### 8.3.4 Uniform-Cost Search (UCS / Dijkstra's Algorithm)
+- **Frontier Implementation**: **Priority Queue** ordered strictly by cumulative path cost $g(n)$.
+- **Expansion Logic**: Always expands the cheapest unexplored path in the frontier.
+- **Optimality Guarantee**: Guarantees finding the global minimum-cost solution when step costs are strictly positive ($c \ge \epsilon > 0$). Goal test must be evaluated **upon node selection, not upon generation**.
+
+#### Step-by-Step UCS Trace on Benchmark Graph:
+1. **Initialize**: $\text{PQ} = [S(0)]$. Select $S(0)$.
+2. **Expand $S$**: Add $A_1(1), B_1(2), C_1(5)$. $\text{PQ} = [A_1(1), B_1(2), C_1(5)]$. Select $A_1(1)$.
+3. **Expand $A_1(1)$**: Children $B_2(1+2=3), C_2(1+3=4)$. $\text{PQ} = [B_1(2), B_2(3), C_2(4), C_1(5)]$. Select $B_1(2)$.
+4. **Expand $B_1(2)$**: Child $C_3(2+1=3)$. $\text{PQ} = [B_2(3), C_3(3), C_2(4), C_1(5)]$. Select $B_2(3)$ (alphabetical tie-break).
+5. **Expand $B_2(3)$**: Child $C_4(3+1=4)$. $\text{PQ} = [C_3(3), C_2(4), C_4(4), C_1(5)]$. Select $C_3(3)$.
+6. **Expand $C_3(3)$**: Child $G_1(3+1=4)$. $\text{PQ} = [C_2(4), C_4(4), G_1(4), C_1(5)]$. Select $C_2(4)$.
+7. **Expand $C_2(4)$**: Child $G_2(4+1=5)$. $\text{PQ} = [C_4(4), G_1(4), C_1(5), G_2(5)]$. Select $C_4(4)$.
+8. **Expand $C_4(4)$**: Child $G_3(4+1=5)$. $\text{PQ} = [G_1(4), C_1(5), G_2(5), G_3(5)]$. Select $G_1(4)$ (Goal!).
+
+- **Returned Path**: $S \to B \to C \to G$
+- **Returned Cost**: $2 + 1 + 1 = \mathbf{4}$ (**Globally Optimal!**).
+- **Limitation**: UCS is strictly backward-looking ($f(n) = g(n)$); it explores circular cost contours blindly without heading toward the target goal.
+
+---
+
+## 8.4 Informed (Heuristic) Search & $A^*$ Search
+
+Informed search leverages a domain-specific **Heuristic Function $h(n)$** providing an estimate of the cheapest remaining distance from node $n$ to the goal.
+
+```mermaid
+flowchart LR
+    UCS["UCS: f(n) = g(n)<br>Backward-looking only"] 
+    Greedy["Greedy Best-First: f(n) = h(n)<br>Forward-looking only (non-optimal)"]
+    AStar["A* Search: f(n) = g(n) + h(n)<br>Optimal balance of past cost & future estimate"]
+```
+
+### 8.4.1 The $A^*$ Evaluation Function
+$$f(n) = g(n) + h(n)$$
+where:
+- $g(n)$ = Exact cumulative cost from the start state to node $n$.
+- $h(n)$ = Estimated cost from node $n$ to the goal state.
+- $f(n)$ = Estimated total cost of the cheapest path constrained to pass through node $n$.
+
+### 8.4.2 Admissibility: The Guarantee of Optimality
+
+> [!important] Definition: Admissible Heuristic
+> A heuristic $h(n)$ is **admissible** if it **never overestimates** the true minimal cost $h^*(n)$ required to reach the goal:
+> $$0 \le h(n) \le h^*(n), \quad \forall n$$
+> An admissible heuristic is mathematically optimistic. For physical path-finding, **Straight-Line Distance (Euclidean)** is inherently admissible because the straight-line distance represents the absolute shortest geometric path between two coordinates.
+
+---
+
+### 8.4.3 Romania Route-Finding Case Study: Arad to Bucharest
+
+**Objective**: Find the optimal driving route from Arad to Bucharest.
+- Straight-Line Distance Heuristic to Bucharest ($h_{\text{SLD}}$):
+  - Arad: $366$, Sibiu: $253$, Rimnicu Vilcea: $193$, Fagaras: $176$, Pitesti: $100$, Bucharest: $0$.
+  - Timisoara: $329$, Zerind: $374$, Oradea: $380$, Craiova: $160$.
+
+```mermaid
+flowchart TD
+    Arad["Arad: f = 0 + 366 = 366"]
+    Arad --> Sibiu["Sibiu: f = 140 + 253 = 393"]
+    Arad --> Tim["Timisoara: f = 118 + 329 = 447"]
+    Arad --> Zer["Zerind: f = 75 + 374 = 449"]
+    
+    Sibiu --> Rim["Rimnicu Vilcea: f = 220 + 193 = 413"]
+    Sibiu --> Fag["Fagaras: f = 239 + 176 = 415"]
+    
+    Rim --> Pit["Pitesti: f = 317 + 100 = 417"]
+    Rim --> Cra["Craiova: f = 366 + 160 = 526"]
+    
+    Fag --> Buc1["Bucharest: f = 450 + 0 = 450"]
+    Pit --> Buc2["Bucharest: f = 418 + 0 = 418 (OPTIMAL)"]
+```
+
+#### Step-by-Step $A^*$ Search Execution:
+1. **Initialize**: $\text{Frontier} = [\text{Arad}(0 + 366 = 366)]$. Select Arad.
+2. **Expand Arad**:
+   - Sibiu: $g = 140, h = 253 \implies f = 393$
+   - Timisoara: $g = 118, h = 329 \implies f = 447$
+   - Zerind: $g = 75, h = 374 \implies f = 449$
+   - $\text{Frontier} = [\text{Sibiu}(393), \text{Timisoara}(447), \text{Zerind}(449)]$. Select **Sibiu ($393$)**.
+3. **Expand Sibiu**:
+   - Rimnicu Vilcea: $g = 140 + 80 = 220, h = 193 \implies f = 413$
+   - Fagaras: $g = 140 + 99 = 239, h = 176 \implies f = 415$
+   - $\text{Frontier} = [\text{Rimnicu}(413), \text{Fagaras}(415), \text{Timisoara}(447), \text{Zerind}(449), \dots]$. Select **Rimnicu ($413$)**.
+4. **Expand Rimnicu Vilcea**:
+   - Pitesti: $g = 220 + 97 = 317, h = 100 \implies f = 417$
+   - Craiova: $g = 220 + 146 = 366, h = 160 \implies f = 526$
+   - $\text{Frontier} = [\text{Fagaras}(415), \text{Pitesti}(417), \text{Timisoara}(447), \dots]$. Select **Fagaras ($415$)**.
+5. **Expand Fagaras**:
+   - Bucharest: $g = 239 + 211 = 450, h = 0 \implies f = 450$.
+   - $\text{Frontier} = [\text{Pitesti}(417), \text{Timisoara}(447), \text{Zerind}(449), \text{Bucharest}_1(450), \dots]$.
+   - Notice: Even though a path to Bucharest was generated ($f = 450$), $A^*$ **does not stop** because Pitesti ($f = 417$) has a lower estimated cost. Select **Pitesti ($417$)**.
+6. **Expand Pitesti**:
+   - Bucharest: $g = 317 + 101 = 418, h = 0 \implies f = 418$.
+   - $\text{Frontier} = [\text{Bucharest}_2(418), \text{Timisoara}(447), \text{Zerind}(449), \text{Bucharest}_1(450), \dots]$. Select **$\text{Bucharest}_2 (418)$**.
+
+- **Optimal Solution**: $\text{Arad} \to \text{Sibiu} \to \text{Rimnicu Vilcea} \to \text{Pitesti} \to \text{Bucharest}$
+- **Total Path Cost**: $\mathbf{418}$
+- **Nodes Expanded**: Only $6$ nodes (compared to dozens in blind search).
+
+---
+
+## 8.5 Genetic Algorithms: Evolutionary Search
+
+Genetic Algorithms (GAs) are randomized, population-based heuristic optimization techniques modeled after Darwinian natural selection and biological genetics.
+
+```mermaid
+flowchart TD
+    P["1. Initialize Random Population of Chromosomes"] --> Fit["2. Fitness Evaluation (Objective Function)"]
+    Fit --> Sel["3. Selection (Roulette Wheel / Tournament / Elitism)"]
+    Sel --> Cross["4. Crossover (Recombine Segments)"]
+    Cross --> Mut["5. Mutation (Random Bit-Flips)"]
+    Mut --> Next["Form Next Generation"]
+    Next --> Check{"Termination Criteria<br>Met?"}
+    Check -- No --> Fit
+    Check -- Yes --> End["Return Optimal Chromosome Solution"]
+```
+
+### 8.5.1 Core Biological Analogies
+- **Gene**: A single scalar variable, character, or binary bit.
+- **Chromosome**: An encoded string representing a complete candidate solution (e.g., binary string `101011`).
+- **Population**: A set of $P$ active candidate chromosomes evaluated concurrently.
+- **Fitness Function**: An objective scoring metric quantifying how effectively a candidate satisfies problem objectives.
+
+### 8.5.2 Selection Mechanisms
+- **Roulette Wheel Selection (Fitness-Proportionate)**: The selection probability of chromosome $i$ is proportional to its fitness:
+  $$P_i = \frac{\text{Fitness}_i}{\sum_{k=1}^P \text{Fitness}_k}$$
+- **Tournament Selection**: Subsamples $k$ candidates at random and selects the individual with the highest fitness.
+- **Elitism**: Directly copies the top $E$ elite performers into the next generation without modification, preventing loss of the best discovered traits.
+
+### 8.5.3 Genetic Operators: Exploration vs. Exploitation
+1. **Crossover (Recombination - Exploitation)**:
+   - Exchanges sub-sequences between two fit parent chromosomes to assemble superior combinations of building blocks:
+     $$\text{Parent 1: } 111 \mid 000, \quad \text{Parent 2: } 000 \mid 111 \implies \text{Offspring: } 111 \mid 111$$
+2. **Mutation (Variation - Exploration)**:
+   - Flips individual genes with low probability $p_m \approx 0.01$:
+     $$\text{Before: } 111111 \implies \text{After: } 110111$$
+   - Prevents permanent loss of genetic alleles and rescues the population from premature stagnation in sub-optimal local minima.
+
+---
+
+## 8.6 Comparison of Search Strategies
+
+| Algorithm | Type | Frontier Mechanism | Complete? | Optimal? | Time Complexity | Space Complexity |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **BFS** | Uninformed | Queue (FIFO) | Yes (finite $b$) | Yes (if step costs equal) | $O(b^d)$ | $O(b^d)$ (Exponential) |
+| **DFS** | Uninformed | Stack (LIFO) | No (fails on cycles) | No | $O(b^m)$ | $O(b \cdot m)$ (Linear) |
+| **UCS** | Uninformed | Priority Queue by $g(n)$ | Yes (if $c \ge \epsilon > 0$) | **Yes** | $O(b^{1 + \lfloor C^* / \epsilon \rfloor})$ | $O(b^{1 + \lfloor C^* / \epsilon \rfloor})$ |
+| **Greedy Best-First** | Informed | Priority Queue by $h(n)$ | No (fails on cycles) | No | $O(b^m)$ (worst) | $O(b^m)$ |
+| **$A^*$ Search** | Informed | Priority Queue by $g(n) + h(n)$ | Yes (if $c \ge \epsilon$) | **Yes** (if $h$ is admissible) | $O(b^d)$ (heavily pruned) | $O(b^d)$ |
+| **Genetic Algorithm** | Stochastic / Evolutionary | Population Pool | Probabilistic | Near-optimal heuristic | $O(\text{Gens} \cdot P)$ | $O(P \cdot L)$ |
+
