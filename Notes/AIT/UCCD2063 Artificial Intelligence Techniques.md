@@ -1162,16 +1162,16 @@ flowchart TD
     end
 ```
 
-| Metric | Mathematical Formula | Definition & Practical Importance | Ideal Value |
-| :--- | :--- | :--- | :--- |
-| **Accuracy** | $\frac{TP + TN}{TP + TN + FP + FN}$ | Overall percentage of correct predictions. Highly misleading on imbalanced data. | $\uparrow 1.0$ ($100\%$) |
-| **Precision** | $\frac{TP}{TP + FP}$ | Fraction of predicted positives that are true positives. Critical when **False Positives are costly** (e.g., spam detection, fraud flagging). | $\uparrow 1.0$ |
-| **Recall (Sensitivity, TPR)** | $\frac{TP}{TP + FN}$ | Fraction of actual positives correctly recovered. Critical when **False Negatives are dangerous** (e.g., disease diagnosis, missile alert). | $\uparrow 1.0$ |
-| **Specificity (TNR)** | $\frac{TN}{TN + FP}$ | Fraction of actual negatives correctly rejected. | $\uparrow 1.0$ |
-| **False Positive Rate (FPR)** | $\frac{FP}{FP + TN} = 1 - \text{Specificity}$ | Probability of a false alarm among actual negative events. | $\downarrow 0.0$ |
-| **False Negative Rate (FNR)** | $\frac{FN}{FN + TP} = 1 - \text{Recall}$ | Miss rate of positive events. | $\downarrow 0.0$ |
-| **$F_1$-Score** | $2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2TP}{2TP + FP + FN}$ | Harmonic mean balancing Precision and Recall; robust metric for imbalanced classes. | $\uparrow 1.0$ |
-| **Log Loss (Cross-Entropy)** | $-\frac{1}{n}\sum [y\log(p) + (1-y)\log(1-p)]$ | Penalizes confident incorrect probabilistic estimates. | $\downarrow 0.0$ |
+| Metric                        | Mathematical Formula                                                                                                  | Definition & Practical Importance                                                                                                             | Ideal Value              |
+| :---------------------------- | :-------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------- |
+| **Accuracy**                  | $\frac{TP + TN}{TP + TN + FP + FN}$                                                                                   | Overall percentage of correct predictions. Highly misleading on imbalanced data.                                                              | $\uparrow 1.0$ ($100\%$) |
+| **Precision**                 | $\frac{TP}{TP + FP}$                                                                                                  | Fraction of predicted positives that are true positives. Critical when **False Positives are costly** (e.g., spam detection, fraud flagging). | $\uparrow 1.0$           |
+| **Recall (Sensitivity, TPR)** | $\frac{TP}{TP + FN}$                                                                                                  | Fraction of actual positives correctly recovered. Critical when **False Negatives are dangerous** (e.g., disease diagnosis, missile alert).   | $\uparrow 1.0$           |
+| **Specificity (TNR)**         | $\frac{TN}{TN + FP}$                                                                                                  | Fraction of actual negatives correctly rejected.                                                                                              | $\uparrow 1.0$           |
+| **False Positive Rate (FPR)** | $\frac{FP}{FP + TN} = 1 - \text{Specificity}$                                                                         | Probability of a false alarm among actual negative events.                                                                                    | $\downarrow 0.0$         |
+| **False Negative Rate (FNR)** | $\frac{FN}{FN + TP} = 1 - \text{Recall}$                                                                              | Miss rate of positive events.                                                                                                                 | $\downarrow 0.0$         |
+| **$F_1$-Score**               | $2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2TP}{2TP + FP + FN}$ | Harmonic mean balancing Precision and Recall; robust metric for imbalanced classes.                                                           | $\uparrow 1.0$           |
+| **Log Loss (Cross-Entropy)**  | $-\frac{1}{n}\sum [y\log(p) + (1-y)\log(1-p)]$                                                                        | Penalizes confident incorrect probabilistic estimates.                                                                                        | $\downarrow 0.0$         |
 
 ---
 
